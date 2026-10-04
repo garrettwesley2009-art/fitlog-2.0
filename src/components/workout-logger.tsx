@@ -161,14 +161,14 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
                   placeholder="Weight"
                   value={draft.weight}
                   onChange={(e) => updateDraft(name, { weight: e.target.value })}
-                  className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                  className="w-24 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
                 />
                 <input
                   type="number"
                   placeholder="Reps"
                   value={draft.reps}
                   onChange={(e) => updateDraft(name, { reps: e.target.value })}
-                  className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                  className="w-20 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
                 />
                 <input
                   type="number"
@@ -176,7 +176,7 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
                   step="0.5"
                   value={draft.rpe}
                   onChange={(e) => updateDraft(name, { rpe: e.target.value })}
-                  className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                  className="w-20 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
                 />
                 <button
                   onClick={() => logSet(name)}
@@ -197,7 +197,7 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
               value={freeformName}
               onChange={(e) => setFreeformName(e.target.value)}
               placeholder="Exercise name"
-              className="flex-1 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+              className="flex-1 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
             />
             <button
               onClick={() => {

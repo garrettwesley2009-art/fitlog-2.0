@@ -93,7 +93,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full max-w-sm rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className="mt-1 w-full max-w-sm rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-black"
         />
       </div>
 
@@ -104,7 +104,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
               <input
                 value={day.day_label}
                 onChange={(e) => updateDay(dayIndex, { day_label: e.target.value })}
-                className="rounded-md border border-neutral-300 px-2 py-1 text-sm font-medium"
+                className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm font-medium text-black"
               />
               {days.length > 1 && (
                 <button
@@ -125,7 +125,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
                     onChange={(e) =>
                       updateExercise(dayIndex, exIndex, { exercise_name: e.target.value })
                     }
-                    className="flex-1 min-w-[160px] rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                    className="flex-1 min-w-[160px] rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
                   />
                   <input
                     type="number"
@@ -136,13 +136,13 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
                         target_sets: e.target.value ? Number(e.target.value) : null,
                       })
                     }
-                    className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                    className="w-20 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
                   />
                   <input
                     placeholder="Reps"
                     value={ex.target_reps ?? ''}
                     onChange={(e) => updateExercise(dayIndex, exIndex, { target_reps: e.target.value })}
-                    className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                    className="w-24 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
                   />
                   <button
                     onClick={() => removeExercise(dayIndex, exIndex)}
