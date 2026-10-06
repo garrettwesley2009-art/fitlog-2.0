@@ -181,7 +181,7 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
                 <button
                   onClick={() => logSet(name)}
                   disabled={!workoutId}
-                  className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+                  className="rounded-md border border-blue-800 bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   Log set
                 </button>
