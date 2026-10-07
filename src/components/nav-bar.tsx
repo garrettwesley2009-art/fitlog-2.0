@@ -17,10 +17,12 @@ export function NavBar({ displayName }: { displayName: string }) {
   const pathname = usePathname()
 
   return (
-    <header className="border-b border-neutral-200 bg-white">
+    <header className="border-b border-line bg-canvas/60 backdrop-blur">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center gap-4">
-          <span className="text-sm font-semibold text-neutral-900">FitLog</span>
+          <span className="text-sm font-semibold uppercase tracking-[0.3em] text-muted">
+            FitLog
+          </span>
           <nav className="flex flex-wrap gap-3">
             {links.map((l) => {
               const active = pathname === l.href || pathname.startsWith(l.href + '/')
@@ -31,8 +33,8 @@ export function NavBar({ displayName }: { displayName: string }) {
                   aria-current={active ? 'page' : undefined}
                   className={
                     active
-                      ? 'border-b-2 border-blue-600 text-sm font-medium text-blue-600'
-                      : 'border-b-2 border-transparent text-sm text-neutral-600 hover:text-neutral-900'
+                      ? 'border-b-2 border-accent text-sm font-medium text-ink'
+                      : 'border-b-2 border-transparent text-sm text-muted hover:text-ink'
                   }
                 >
                   {l.label}
@@ -42,11 +44,9 @@ export function NavBar({ displayName }: { displayName: string }) {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-neutral-500">{displayName}</span>
+          <span className="text-sm text-muted">{displayName}</span>
           <form action={logout}>
-            <button className="text-sm text-neutral-500 underline hover:text-neutral-900">
-              Log out
-            </button>
+            <button className="text-sm text-muted underline hover:text-ink">Log out</button>
           </form>
         </div>
       </div>

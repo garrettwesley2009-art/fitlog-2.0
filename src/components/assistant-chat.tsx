@@ -85,20 +85,20 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
   }
 
   return (
-    <div className="flex h-[70vh] flex-col rounded-xl border border-neutral-200 bg-white">
+    <div className="glass-card flex h-[70vh] flex-col overflow-hidden">
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-muted">
             Ask for a new program, ask to customize your current one, or just ask a training question.
           </p>
         )}
         {messages.map((m, i) => (
           <div
             key={i}
-            className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
               m.role === 'user'
-                ? 'ml-auto bg-neutral-900 text-white'
-                : 'bg-neutral-100 text-neutral-900'
+                ? 'ml-auto bg-accent text-white'
+                : 'bg-glass-hover text-ink'
             }`}
           >
             {m.content}
@@ -106,57 +106,46 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
         ))}
 
         {pendingDraft && (
-          <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-3">
-            <p className="text-sm font-medium text-neutral-900">
+          <div className="inset-card p-3">
+            <p className="text-sm font-medium text-ink">
               Proposed program: {pendingDraft.name}
             </p>
-            <ul className="mt-1 space-y-1 text-sm text-neutral-600">
+            <ul className="mt-1 space-y-1 text-sm text-muted">
               {pendingDraft.days.map((d, i) => (
                 <li key={i}>
-                  <span className="font-medium">{d.day_label}:</span>{' '}
+                  <span className="font-medium text-ink">{d.day_label}:</span>{' '}
                   {d.exercises.map((e) => e.exercise_name).join(', ')}
                 </li>
               ))}
             </ul>
             <div className="mt-3 flex gap-2">
-              <button
-                onClick={applyDraft}
-                disabled={applying}
-                className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-              >
+              <button onClick={applyDraft} disabled={applying} className="btn-accent-sm">
                 {applying ? 'Applying…' : 'Apply this program'}
               </button>
-              <button
-                onClick={() => setPendingDraft(null)}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
-              >
+              <button onClick={() => setPendingDraft(null)} className="btn-ghost-sm">
                 Dismiss
               </button>
             </div>
-            <p className="mt-2 text-xs text-neutral-400">
+            <p className="mt-2 text-xs text-muted">
               Nothing is saved until you click Apply.
             </p>
           </div>
         )}
 
-        {loading && <p className="text-sm text-neutral-400">Thinking…</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {loading && <p className="text-sm text-muted">Thinking…</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-2 border-t border-neutral-200 p-3">
+      <div className="flex gap-2 border-t border-line p-3">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
           placeholder="Message the assistant…"
-          className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className="input-compact min-w-0 flex-1"
         />
-        <button
-          onClick={send}
-          disabled={loading}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-        >
+        <button onClick={send} disabled={loading} className="btn-accent-sm">
           Send
         </button>
       </div>

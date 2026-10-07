@@ -30,33 +30,27 @@ export default async function TemplateDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">{template.name}</h1>
-        {template.description && <p className="mt-1 text-sm text-neutral-500">{template.description}</p>}
+        <h1 className="text-2xl font-semibold text-ink">{template.name}</h1>
+        {template.description && <p className="mt-1 text-sm text-muted">{template.description}</p>}
       </div>
 
       <div className="flex flex-wrap gap-3">
         <form action={createProgramFromTemplate}>
           <input type="hidden" name="templateId" value={template.id} />
-          <button
-            type="submit"
-            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-          >
+          <button type="submit" className="btn-accent">
             Use this template
           </button>
         </form>
-        <Link
-          href={`/assistant?templateId=${template.id}`}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-50"
-        >
+        <Link href={`/assistant?templateId=${template.id}`} className="btn-ghost">
           Customize with AI first
         </Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {(days ?? []).map((day) => (
-          <div key={day.id} className="rounded-lg border border-neutral-200 bg-white p-4">
-            <p className="font-medium text-neutral-900">{day.day_label}</p>
-            <ul className="mt-2 space-y-1 text-sm text-neutral-600">
+          <div key={day.id} className="glass-card p-4">
+            <p className="font-medium text-ink">{day.day_label}</p>
+            <ul className="mt-2 space-y-1 text-sm text-muted">
               {(day.template_exercises ?? [])
                 .sort((a, b) => a.order_index - b.order_index)
                 .map((ex, i) => {

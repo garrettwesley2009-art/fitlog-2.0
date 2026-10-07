@@ -19,38 +19,35 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-2xl font-semibold text-ink">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted">
           Everything you log here saves straight to the cloud as you go.
         </p>
       </div>
 
       {program ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
+        <div className="glass-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-400">Current program</p>
-              <h2 className="mt-1 text-lg font-semibold text-neutral-900">{program.name}</h2>
-              <p className="mt-1 text-sm text-neutral-500">
-                {program.days.length} day{program.days.length === 1 ? '' : 's'} &middot; source: {program.source}
+              <p className="text-xs font-medium uppercase tracking-wide text-accent">
+                Current program
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-ink">{program.name}</h2>
+              <p className="mt-1 text-sm text-muted">
+                {program.days.length} day{program.days.length === 1 ? '' : 's'} &middot; source:{' '}
+                {program.source}
               </p>
             </div>
-            <Link
-              href="/log"
-              className="rounded-md border border-blue-800 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
+            <Link href="/log" className="btn-accent">
               Start a workout
             </Link>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {program.days.map((day) => (
-              <div
-                key={day.id}
-                className="rounded-lg border border-neutral-200 p-3 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
-              >
-                <p className="text-sm font-medium text-neutral-900">{day.day_label}</p>
-                <ul className="mt-1 space-y-0.5 text-sm text-neutral-500">
+              <div key={day.id} className="inset-card p-3 hover:border-accent/40">
+                <p className="text-sm font-medium text-ink">{day.day_label}</p>
+                <ul className="mt-1 space-y-0.5 text-sm text-muted">
                   {day.exercises.map((ex) => (
                     <li key={ex.id}>
                       {ex.exercise_name}
@@ -65,25 +62,16 @@ export default async function DashboardPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center shadow-sm">
-          <p className="text-neutral-700">You don&apos;t have a program yet.</p>
+        <div className="glass-card p-6 text-center">
+          <p className="text-ink">You don&apos;t have a program yet.</p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/templates"
-              className="rounded-md border border-blue-800 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
+            <Link href="/templates" className="btn-accent">
               Choose a template
             </Link>
-            <Link
-              href="/programs/new"
-              className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-50"
-            >
+            <Link href="/programs/new" className="btn-ghost">
               Build your own
             </Link>
-            <Link
-              href="/assistant"
-              className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-50"
-            >
+            <Link href="/assistant" className="btn-ghost">
               Ask the AI assistant
             </Link>
           </div>
@@ -91,21 +79,21 @@ export default async function DashboardPage() {
       )}
 
       <div>
-        <h2 className="text-sm font-semibold text-neutral-900">Recent activity</h2>
+        <h2 className="text-sm font-semibold text-ink">Recent activity</h2>
         {recentWorkouts && recentWorkouts.length > 0 ? (
-          <ul className="mt-2 divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <ul className="glass-card mt-2 divide-y divide-line overflow-hidden">
             {recentWorkouts.map((w) => (
               <li
                 key={w.id}
-                className="flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-neutral-50"
+                className="flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-glass-hover"
               >
-                <span className="text-neutral-700">{w.date}</span>
-                <span className="text-neutral-500">{w.sets?.length ?? 0} sets logged</span>
+                <span className="text-ink">{w.date}</span>
+                <span className="text-muted">{w.sets?.length ?? 0} sets logged</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-neutral-500">No workouts logged yet.</p>
+          <p className="mt-2 text-sm text-muted">No workouts logged yet.</p>
         )}
       </div>
     </div>

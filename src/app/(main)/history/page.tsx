@@ -15,8 +15,8 @@ export default async function HistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">History</h1>
-        <p className="mt-1 text-sm text-neutral-500">Your full log, pulled straight from the cloud.</p>
+        <h1 className="text-2xl font-semibold text-ink">History</h1>
+        <p className="mt-1 text-sm text-muted">Your full log, pulled straight from the cloud.</p>
       </div>
 
       {workouts && workouts.length > 0 ? (
@@ -31,12 +31,12 @@ export default async function HistoryPage() {
             }
 
             return (
-              <div key={w.id} className="rounded-xl border border-neutral-200 bg-white p-4">
-                <p className="font-medium text-neutral-900">{w.date}</p>
-                <div className="mt-2 space-y-1 text-sm text-neutral-600">
+              <div key={w.id} className="glass-card p-4">
+                <p className="font-medium text-ink">{w.date}</p>
+                <div className="mt-2 space-y-1 text-sm text-muted">
                   {[...byExercise.entries()].map(([name, sets]) => (
                     <p key={name}>
-                      <span className="font-medium">{name}:</span>{' '}
+                      <span className="font-medium text-ink">{name}:</span>{' '}
                       {sets
                         .sort((a, b) => a.set_index - b.set_index)
                         .map((s) => `${s.weight ?? '—'}x${s.reps ?? '—'}`)
@@ -49,7 +49,7 @@ export default async function HistoryPage() {
           })}
         </div>
       ) : (
-        <p className="text-sm text-neutral-500">Nothing logged yet.</p>
+        <p className="text-sm text-muted">Nothing logged yet.</p>
       )}
     </div>
   )

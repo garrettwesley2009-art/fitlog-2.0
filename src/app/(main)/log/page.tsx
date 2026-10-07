@@ -13,11 +13,11 @@ export default async function LogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Log a workout</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-2xl font-semibold text-ink">Log a workout</h1>
+        <p className="mt-1 text-sm text-muted">
           {program ? `Following: ${program.name}` : 'No program set -- logging freeform.'}{' '}
           {!program && (
-            <Link href="/templates" className="underline">
+            <Link href="/templates" className="text-ink underline">
               pick a template
             </Link>
           )}

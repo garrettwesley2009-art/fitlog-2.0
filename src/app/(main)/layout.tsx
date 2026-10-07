@@ -20,7 +20,7 @@ export default async function MainLayout({
     'Account'
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-canvas bg-glow text-ink">
       <NavBar displayName={displayName} />
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
     </div>

@@ -20,53 +20,65 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-canvas);
+  color: var(--color-ink);
   font-family: Arial, Helvetica, sans-serif;
 }
 
 /* ------------------------------------------------------------------
-   FitLog design tokens. Change a color here and every page that uses
-   these names updates. To switch to the gym's brand color, edit
-   --color-accent and --color-accent-hover only.
+   FitLog design tokens. Change a value here and every page updates.
+   To switch to the gym's brand color, edit --color-accent and
+   --color-accent-hover only.
    ------------------------------------------------------------------ */
 @theme static {
-  --color-canvas: #0a0a0a;          /* page background */
-  --color-surface: #141414;         /* solid dark panels */
-  --color-line: #2a2a2a;            /* borders and dividers */
-  --color-ink: #f2f2f2;             /* main text */
-  --color-muted: #8a8a8a;           /* secondary text */
-  --color-accent: #c0392b;          /* red accent */
-  --color-accent-hover: #a93226;    /* red accent on hover */
+  --color-canvas: #0a0a0a;            /* page background */
+  --color-surface: #141414;           /* solid dark panels */
+  --color-line: #2a2a2a;              /* borders and dividers */
+  --color-ink: #f2f2f2;               /* main text */
+  --color-muted: #8a8a8a;             /* secondary text */
+  --color-accent: #c0392b;            /* red accent */
+  --color-accent-hover: #a93226;      /* red accent on hover */
+  --color-danger: #fca5a5;            /* error text */
+  --color-glass: rgba(255, 255, 255, 0.05);        /* glass fill */
+  --color-glass-hover: rgba(255, 255, 255, 0.09);  /* glass fill on hover */
   --radius-card: 1.75rem;
 }
 
-/* Soft red glow from the top of the page */
+/* Soft red glow at the top of the page (fixed size, same on every page) */
 @utility bg-glow {
   background-image: radial-gradient(
-    120% 55% at 50% 0%,
+    ellipse 900px 480px at 50% 0%,
     rgba(192, 57, 43, 0.35) 0%,
-    rgba(10, 10, 10, 0) 65%
+    rgba(10, 10, 10, 0) 70%
   );
   background-repeat: no-repeat;
 }
 
-/* Glass card */
+/* Main glass card */
 @utility glass-card {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-glass);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-card);
   backdrop-filter: blur(16px);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
 }
 
-/* Text inputs */
+/* Darker card that sits inside a glass card */
+@utility inset-card {
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+/* Text inputs: large (forms) and compact (inline rows) */
 @utility input-field {
   width: 100%;
   border-radius: 0.875rem;
   border: 1px solid var(--color-line);
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-glass);
   color: var(--color-ink);
+  color-scheme: dark;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   &::placeholder {
@@ -79,8 +91,31 @@ body {
   }
 }
 
-/* Main red pill button */
+@utility input-compact {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-glass);
+  color: var(--color-ink);
+  color-scheme: dark;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  &::placeholder {
+    color: var(--color-muted);
+  }
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.25);
+  }
+}
+
+/* Red pill button (main action) */
 @utility btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   border-radius: 9999px;
   background-color: var(--color-accent);
   color: #ffffff;
@@ -90,5 +125,75 @@ body {
   transition: background-color 0.15s;
   &:hover {
     background-color: var(--color-accent-hover);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-accent-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.45rem 0.95rem;
+  transition: background-color 0.15s;
+  &:hover {
+    background-color: var(--color-accent-hover);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Gray outlined pill button (secondary action) */
+@utility btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-glass);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.8rem 1.25rem;
+  transition: background-color 0.15s;
+  &:hover {
+    background-color: var(--color-glass-hover);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-ghost-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-glass);
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.45rem 0.95rem;
+  transition: background-color 0.15s;
+  &:hover {
+    background-color: var(--color-glass-hover);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }

@@ -38,8 +38,8 @@ export default async function AssistantPage({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">AI assistant</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-2xl font-semibold text-ink">AI assistant</h1>
+        <p className="mt-1 text-sm text-muted">
           {templateId
             ? 'Ask it to tweak this template before you start it.'
             : 'Ask it to build or adjust a program, or ask a training question.'}

@@ -89,27 +89,27 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-neutral-700">Program name</label>
+        <label className="block text-sm font-medium text-muted">Program name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full max-w-sm rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-black"
+          className="input-field mt-1 max-w-sm"
         />
       </div>
 
       <div className="space-y-4">
         {days.map((day, dayIndex) => (
-          <div key={dayIndex} className="rounded-xl border border-neutral-200 bg-white p-4">
+          <div key={dayIndex} className="glass-card p-4">
             <div className="flex items-center justify-between gap-3">
               <input
                 value={day.day_label}
                 onChange={(e) => updateDay(dayIndex, { day_label: e.target.value })}
-                className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm font-medium text-black"
+                className="input-compact max-w-[200px] font-medium"
               />
               {days.length > 1 && (
                 <button
                   onClick={() => removeDay(dayIndex)}
-                  className="text-xs text-neutral-400 hover:text-red-600"
+                  className="text-xs text-muted hover:text-danger"
                 >
                   Remove day
                 </button>
@@ -125,7 +125,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
                     onChange={(e) =>
                       updateExercise(dayIndex, exIndex, { exercise_name: e.target.value })
                     }
-                    className="flex-1 min-w-[160px] rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
+                    className="input-compact min-w-[160px] flex-1"
                   />
                   <input
                     type="number"
@@ -136,17 +136,17 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
                         target_sets: e.target.value ? Number(e.target.value) : null,
                       })
                     }
-                    className="w-20 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
+                    className="input-compact w-20"
                   />
                   <input
                     placeholder="Reps"
                     value={ex.target_reps ?? ''}
                     onChange={(e) => updateExercise(dayIndex, exIndex, { target_reps: e.target.value })}
-                    className="w-24 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-black"
+                    className="input-compact w-24"
                   />
                   <button
                     onClick={() => removeExercise(dayIndex, exIndex)}
-                    className="text-xs text-neutral-400 hover:text-red-600"
+                    className="text-xs text-muted hover:text-danger"
                   >
                     Remove
                   </button>
@@ -154,7 +154,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
               ))}
               <button
                 onClick={() => addExercise(dayIndex)}
-                className="text-sm text-neutral-600 underline hover:text-neutral-900"
+                className="text-sm text-muted underline hover:text-ink"
               >
                 + Add exercise
               </button>
@@ -162,21 +162,14 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
           </div>
         ))}
 
-        <button
-          onClick={addDay}
-          className="text-sm text-neutral-600 underline hover:text-neutral-900"
-        >
+        <button onClick={addDay} className="text-sm text-muted underline hover:text-ink">
           + Add day
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
+      <button onClick={handleSave} disabled={saving} className="btn-accent">
         {saving ? 'Saving…' : 'Save program'}
       </button>
     </div>
