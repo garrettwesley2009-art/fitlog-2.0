@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentProgram } from '@/lib/data'
+import { getCurrentProgram, getProgramPosition } from '@/lib/data'
+import { skipCurrentDay } from '@/app/actions/workouts'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -8,6 +9,7 @@ export default async function DashboardPage() {
   const user = userData.user!
 
   const program = await getCurrentProgram(supabase, user.id)
+  const position = program ? await getProgramPosition(supabase, program) : null
 
   const { data: recentWorkouts } = await supabase
     .from('workouts')
@@ -25,40 +27,67 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {program ? (
+      {program && position && !position.finished ? (
         <div className="glass-card p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-accent">
-                Current program
-              </p>
-              <h2 className="mt-1 text-lg font-semibold text-ink">{program.name}</h2>
-              <p className="mt-1 text-sm text-muted">
-                {program.days.length} day{program.days.length === 1 ? '' : 's'} &middot; source:{' '}
-                {program.source}
-              </p>
-            </div>
-            <Link href="/log" className="btn-accent">
-              Start a workout
-            </Link>
-          </div>
+          <p className="text-xs font-medium uppercase tracking-wide text-accent">
+            Week {position.week} of {position.totalWeeks}
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-ink">{position.day.day_label}</h2>
+          <p className="mt-1 text-sm text-muted">
+            {program.name} &middot; Day {position.dayIndex + 1} of {program.days.length}
+          </p>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {program.days.map((day) => (
-              <div key={day.id} className="inset-card p-3 hover:border-accent/40">
-                <p className="text-sm font-medium text-ink">{day.day_label}</p>
-                <ul className="mt-1 space-y-0.5 text-sm text-muted">
-                  {day.exercises.map((ex) => (
-                    <li key={ex.id}>
-                      {ex.exercise_name}
-                      {ex.target_sets && ex.target_reps
-                        ? ` — ${ex.target_sets}x${ex.target_reps}`
-                        : ''}
-                    </li>
-                  ))}
-                </ul>
+          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-line">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${Math.round((position.doneCount / position.totalDays) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            {position.doneCount} of {position.totalDays} days finished
+          </p>
+
+          <div className="inset-card mt-4 divide-y divide-line px-4">
+            {position.day.exercises.map((ex) => (
+              <div key={ex.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="text-ink">{ex.exercise_name}</span>
+                <span className="text-muted">
+                  {ex.target_sets && ex.target_reps ? `${ex.target_sets} x ${ex.target_reps}` : ''}
+                </span>
               </div>
             ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link href="/log" className="btn-accent">
+              Start workout
+            </Link>
+            <form action={skipCurrentDay}>
+              <button type="submit" className="btn-ghost">
+                Skip day
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : program && position?.finished ? (
+        <div className="glass-card p-6 text-center">
+          <p className="text-xs font-medium uppercase tracking-wide text-accent">
+            Program complete
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-ink">{program.name}</h2>
+          <p className="mt-1 text-sm text-muted">
+            You finished all {position.totalWeeks} weeks. Pick what&apos;s next.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <Link href="/templates" className="btn-accent">
+              Choose a template
+            </Link>
+            <Link href="/programs/new" className="btn-ghost">
+              Build your own
+            </Link>
+            <Link href="/assistant" className="btn-ghost">
+              Ask the AI assistant
+            </Link>
           </div>
         </div>
       ) : (

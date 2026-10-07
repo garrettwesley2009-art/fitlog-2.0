@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { startWorkoutForCurrentDay, finishWorkout } from '@/app/actions/workouts'
 
-type ProgramDayLite = {
+type DayLite = {
   id: string
   day_label: string
   exercises: { exercise_name: string; target_sets: number | null; target_reps: string | null }[]
 }
 
-type LoggedSet = {
+export type LoggedSet = {
   id: string
   set_index: number
   weight: number | null
@@ -17,52 +19,43 @@ type LoggedSet = {
   exercise_name: string
 }
 
-export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
-  const [selectedDay, setSelectedDay] = useState<ProgramDayLite | null>(days[0] ?? null)
-  const [workoutId, setWorkoutId] = useState<string | null>(null)
-  const [loggedSets, setLoggedSets] = useState<LoggedSet[]>([])
+export function WorkoutLogger({
+  day,
+  initialWorkoutId,
+  initialSets,
+}: {
+  day: DayLite | null
+  initialWorkoutId: string | null
+  initialSets: LoggedSet[]
+}) {
+  const router = useRouter()
+  const [workoutId, setWorkoutId] = useState<string | null>(initialWorkoutId)
+  const [loggedSets, setLoggedSets] = useState<LoggedSet[]>(initialSets)
   const [freeformName, setFreeformName] = useState('')
   const [drafts, setDrafts] = useState<Record<string, { weight: string; reps: string; rpe: string }>>({})
-  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [finishing, setFinishing] = useState(false)
+  const startingRef = useRef<Promise<string | null> | null>(null)
 
-  async function startWorkout(day: ProgramDayLite | null) {
-    setStarting(true)
-    const res = await fetch('/api/workouts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ programDayId: day?.id ?? null }),
-    })
-    const body = await res.json()
-    setStarting(false)
-    if (res.ok) {
-      setWorkoutId(body.workoutId)
-      const setsRes = await fetch(`/api/workouts?workoutId=${body.workoutId}`)
-      const setsBody = await setsRes.json()
-      type RawSet = {
-        id: string
-        set_index: number
-        weight: number | null
-        reps: number | null
-        rpe: number | null
-        exercises: { name: string } | null
-      }
-      setLoggedSets(
-        (setsBody.sets ?? []).map((s: RawSet) => ({
-          id: s.id,
-          set_index: s.set_index,
-          weight: s.weight,
-          reps: s.reps,
-          rpe: s.rpe,
-          exercise_name: s.exercises?.name ?? '',
-        }))
-      )
+  // Creates the workout the first time a set is logged (not when the page opens).
+  async function ensureWorkout(): Promise<string | null> {
+    if (workoutId) return workoutId
+    if (!startingRef.current) {
+      startingRef.current = startWorkoutForCurrentDay()
+        .then((res) => {
+          if (res.ok) {
+            setWorkoutId(res.workoutId)
+            return res.workoutId
+          }
+          setError(res.error)
+          return null
+        })
+        .finally(() => {
+          startingRef.current = null
+        })
     }
+    return startingRef.current
   }
-
-  useEffect(() => {
-    queueMicrotask(() => startWorkout(days[0] ?? null))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   function draftFor(exerciseName: string) {
     return drafts[exerciseName] ?? { weight: '', reps: '', rpe: '' }
@@ -73,7 +66,12 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
   }
 
   async function logSet(exerciseName: string) {
-    if (!workoutId || !exerciseName.trim()) return
+    if (!exerciseName.trim()) return
+    setError(null)
+
+    const id = await ensureWorkout()
+    if (!id) return
+
     const draft = draftFor(exerciseName)
     const existingCount = loggedSets.filter((s) => s.exercise_name === exerciseName).length
 
@@ -81,7 +79,7 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        workoutId,
+        workoutId: id,
         exerciseName,
         setIndex: existingCount + 1,
         weight: draft.weight ? Number(draft.weight) : null,
@@ -91,62 +89,73 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
       }),
     })
 
-    if (res.ok) {
-      setLoggedSets((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          set_index: existingCount + 1,
-          weight: draft.weight ? Number(draft.weight) : null,
-          reps: draft.reps ? Number(draft.reps) : null,
-          rpe: draft.rpe ? Number(draft.rpe) : null,
-          exercise_name: exerciseName,
-        },
-      ])
-      updateDraft(exerciseName, { weight: '', reps: '', rpe: '' })
+    if (!res.ok) {
+      setError('Could not save that set. Try again.')
+      return
     }
+
+    setLoggedSets((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        set_index: existingCount + 1,
+        weight: draft.weight ? Number(draft.weight) : null,
+        reps: draft.reps ? Number(draft.reps) : null,
+        rpe: draft.rpe ? Number(draft.rpe) : null,
+        exercise_name: exerciseName,
+      },
+    ])
+    updateDraft(exerciseName, { weight: '', reps: '', rpe: '' })
   }
 
-  const exercisesToShow = selectedDay
-    ? selectedDay.exercises.map((e) => e.exercise_name)
-    : [...new Set(loggedSets.map((s) => s.exercise_name))]
+  async function handleFinish() {
+    if (!workoutId) return
+    setFinishing(true)
+    setError(null)
+    const res = await finishWorkout(workoutId)
+    setFinishing(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    router.push('/dashboard')
+  }
+
+  const targets = new Map(
+    (day?.exercises ?? []).map((e) => [e.exercise_name, e] as const)
+  )
+
+  // Today's exercises first, plus anything extra the user added and logged.
+  const exercisesToShow = [
+    ...new Set([
+      ...(day?.exercises ?? []).map((e) => e.exercise_name),
+      ...loggedSets.map((s) => s.exercise_name),
+    ]),
+  ].filter(Boolean)
 
   return (
     <div className="space-y-6">
-      {days.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {days.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => {
-                setSelectedDay(d)
-                startWorkout(d)
-              }}
-              className={
-                selectedDay?.id === d.id ? 'btn-accent-sm' : 'btn-ghost-sm'
-              }
-            >
-              {d.day_label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {starting && <p className="text-sm text-muted">Starting today&apos;s session…</p>}
-
       <div className="space-y-4">
         {exercisesToShow.map((name) => {
           const sets = loggedSets.filter((s) => s.exercise_name === name)
           const draft = draftFor(name)
+          const target = targets.get(name)
           return (
             <div key={name} className="glass-card p-4">
-              <p className="font-medium text-ink">{name}</p>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-medium text-ink">{name}</p>
+                {target?.target_sets && target.target_reps && (
+                  <p className="text-sm text-muted">
+                    {target.target_sets} x {target.target_reps}
+                  </p>
+                )}
+              </div>
 
               {sets.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm text-muted">
                   {sets.map((s) => (
                     <li key={s.id}>
-                      Set {s.set_index}: {s.weight ?? '—'} x {s.reps ?? '—'}
+                      Set {s.set_index}: {s.weight ?? '-'} x {s.reps ?? '-'}
                       {s.rpe ? ` @ RPE ${s.rpe}` : ''}
                     </li>
                   ))}
@@ -176,11 +185,7 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
                   onChange={(e) => updateDraft(name, { rpe: e.target.value })}
                   className="input-compact w-20"
                 />
-                <button
-                  onClick={() => logSet(name)}
-                  disabled={!workoutId}
-                  className="btn-accent-sm"
-                >
+                <button onClick={() => logSet(name)} className="btn-accent-sm">
                   Log set
                 </button>
               </div>
@@ -201,6 +206,7 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
               onClick={() => {
                 if (freeformName.trim()) {
                   logSet(freeformName.trim())
+                  setFreeformName('')
                 }
               }}
               className="btn-ghost-sm"
@@ -211,9 +217,19 @@ export function WorkoutLogger({ days }: { days: ProgramDayLite[] }) {
         </div>
       </div>
 
+      {error && <p className="text-sm text-danger">{error}</p>}
+
+      <button
+        onClick={handleFinish}
+        disabled={finishing || loggedSets.length === 0}
+        className="btn-accent w-full"
+      >
+        {finishing ? 'Finishing...' : 'Finish workout'}
+      </button>
+
       <p className="text-xs text-muted">
-        Every set above is saved to the cloud the moment you click &quot;Log set&quot; — nothing waits
-        for a final save.
+        Every set above is saved to the cloud the moment you click &quot;Log set&quot;. Finishing
+        the workout marks today as done and moves you to the next day.
       </p>
     </div>
   )

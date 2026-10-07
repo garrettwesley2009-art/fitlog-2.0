@@ -13,7 +13,7 @@ export default async function TemplateDetailPage({
 
   const { data: template } = await supabase
     .from('templates')
-    .select('id, name, description')
+    .select('id, name, description, total_weeks')
     .eq('id', id)
     .single()
 
@@ -30,7 +30,10 @@ export default async function TemplateDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-ink">{template.name}</h1>
+        <p className="text-xs font-medium uppercase tracking-wide text-accent">
+          {template.total_weeks} weeks &middot; {(days ?? []).length} days per week
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold text-ink">{template.name}</h1>
         {template.description && <p className="mt-1 text-sm text-muted">{template.description}</p>}
       </div>
 
@@ -60,7 +63,7 @@ export default async function TemplateDetailPage({
                   return (
                     <li key={i}>
                       {exerciseName}
-                      {ex.target_sets && ex.target_reps ? ` — ${ex.target_sets}x${ex.target_reps}` : ''}
+                      {ex.target_sets && ex.target_reps ? ` - ${ex.target_sets}x${ex.target_reps}` : ''}
                       {ex.notes ? ` (${ex.notes})` : ''}
                     </li>
                   )
