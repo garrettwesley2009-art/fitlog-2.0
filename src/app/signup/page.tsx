@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { signup } from '@/app/actions/auth'
+import { AuthShell } from '@/components/auth-shell'
 
 export default async function SignupPage({
   searchParams,
@@ -9,63 +10,43 @@ export default async function SignupPage({
   const { error } = await searchParams
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-sm space-y-6 rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Create your account</h1>
-          <p className="mt-1 text-sm text-neutral-500">One account, just for you.</p>
-        </div>
-
-        {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
-        <form action={signup} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700">Display name</label>
-            <input
-              name="displayName"
-              type="text"
-              required
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700">Email</label>
-            <input
-              name="email"
-              type="email"
-              required
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700">Password</label>
-            <input
-              name="password"
-              type="password"
-              required
-              minLength={6}
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-          >
-            Sign up
-          </button>
-        </form>
-
-        <p className="text-sm text-neutral-500">
-          Already have an account?{' '}
-          <Link href="/login" className="font-medium text-neutral-900 underline">
-            Log in
-          </Link>
+    <AuthShell title="Create your account" subtitle="One account, just for you.">
+      {error && (
+        <p className="rounded-xl border border-accent/30 bg-accent/15 px-3 py-2 text-sm text-red-300">
+          {error}
         </p>
-      </div>
-    </div>
+      )}
+
+      <form action={signup} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-muted">Display name</label>
+          <input name="displayName" type="text" required className="input-field mt-1" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted">Email</label>
+          <input name="email" type="email" required className="input-field mt-1" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted">Password</label>
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={6}
+            className="input-field mt-1"
+          />
+        </div>
+        <button type="submit" className="btn-accent w-full">
+          Sign up
+        </button>
+      </form>
+
+      <p className="text-sm text-muted">
+        Already have an account?{' '}
+        <Link href="/login" className="font-medium text-ink underline">
+          Log in
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

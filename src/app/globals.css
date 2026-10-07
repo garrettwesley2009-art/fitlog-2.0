@@ -24,3 +24,71 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ------------------------------------------------------------------
+   FitLog design tokens. Change a color here and every page that uses
+   these names updates. To switch to the gym's brand color, edit
+   --color-accent and --color-accent-hover only.
+   ------------------------------------------------------------------ */
+@theme static {
+  --color-canvas: #0a0a0a;          /* page background */
+  --color-surface: #141414;         /* solid dark panels */
+  --color-line: #2a2a2a;            /* borders and dividers */
+  --color-ink: #f2f2f2;             /* main text */
+  --color-muted: #8a8a8a;           /* secondary text */
+  --color-accent: #c0392b;          /* red accent */
+  --color-accent-hover: #a93226;    /* red accent on hover */
+  --radius-card: 1.75rem;
+}
+
+/* Soft red glow from the top of the page */
+@utility bg-glow {
+  background-image: radial-gradient(
+    120% 55% at 50% 0%,
+    rgba(192, 57, 43, 0.35) 0%,
+    rgba(10, 10, 10, 0) 65%
+  );
+  background-repeat: no-repeat;
+}
+
+/* Glass card */
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Text inputs */
+@utility input-field {
+  width: 100%;
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-line);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-ink);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  &::placeholder {
+    color: var(--color-muted);
+  }
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.25);
+  }
+}
+
+/* Main red pill button */
+@utility btn-accent {
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.8rem 1.25rem;
+  transition: background-color 0.15s;
+  &:hover {
+    background-color: var(--color-accent-hover);
+  }
+}
