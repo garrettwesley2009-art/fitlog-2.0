@@ -2,7 +2,18 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram, getProgramPosition } from '@/lib/data'
 import { WorkoutLogger } from '@/components/workout-logger'
-import type { LoggedSet } from '@/components/workout-logger'
+import type { LoggedSet, LastTime, LastTimeSet } from '@/components/workout-logger'
+
+// "2026-10-03" -> "Oct 3". Done here on the server with a fixed locale so the
+// text is identical on the server and in the browser.
+function formatDay(date: string | null): string {
+  if (!date) return ''
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
 
 export default async function LogPage() {
   const supabase = await createClient()
@@ -57,6 +68,54 @@ export default async function LogPage() {
     }
   }
 
+  // Last time: for each of today's exercises, the sets from the most recent
+  // OTHER workout where that exercise was logged. It doesn't matter which
+  // week or day that was, so it still works after skipped days.
+  const lastTime: Record<string, LastTime> = {}
+
+  if (program && position && !position.finished) {
+    const exerciseNameById = new Map<string, string>()
+    for (const e of position.day.exercises) {
+      if (e.exercise_id) exerciseNameById.set(e.exercise_id, e.exercise_name)
+    }
+
+    if (exerciseNameById.size > 0) {
+      const { data: pastWorkouts } = await supabase
+        .from('workouts')
+        .select('id, date, sets(set_index, weight, reps, rpe, exercise_id)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(60)
+
+      for (const w of pastWorkouts ?? []) {
+        if (w.id === initialWorkoutId) continue
+
+        const setsByExercise = new Map<string, LastTimeSet[]>()
+        for (const s of w.sets ?? []) {
+          const exerciseId = s.exercise_id as string | null
+          if (!exerciseId || !exerciseNameById.has(exerciseId)) continue
+          const list = setsByExercise.get(exerciseId) ?? []
+          list.push({
+            set_index: s.set_index as number,
+            weight: s.weight as number | null,
+            reps: s.reps as number | null,
+            rpe: s.rpe as number | null,
+          })
+          setsByExercise.set(exerciseId, list)
+        }
+
+        for (const [exerciseId, sets] of setsByExercise) {
+          const name = exerciseNameById.get(exerciseId)!
+          if (lastTime[name]) continue // already found a more recent workout
+          lastTime[name] = {
+            date: formatDay(w.date as string | null),
+            sets: sets.sort((a, b) => a.set_index - b.set_index),
+          }
+        }
+      }
+    }
+  }
+
   const day =
     program && position && !position.finished
       ? {
@@ -95,6 +154,7 @@ export default async function LogPage() {
         day={day}
         initialWorkoutId={initialWorkoutId}
         initialSets={initialSets}
+        lastTime={lastTime}
       />
     </div>
   )
