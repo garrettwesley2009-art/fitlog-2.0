@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { clampWeeks } from '@/lib/data'
 
 // Copies a template's days/exercises into a brand new program owned by the
 // current user. Used by the "Use this template" button on a template's page.
@@ -16,7 +17,7 @@ export async function createProgramFromTemplate(formData: FormData) {
 
   const { data: template } = await supabase
     .from('templates')
-    .select('id, name')
+    .select('id, name, total_weeks')
     .eq('id', templateId)
     .single()
 
@@ -37,6 +38,7 @@ export async function createProgramFromTemplate(formData: FormData) {
       name: template.name,
       source: 'template',
       source_template_id: template.id,
+      total_weeks: clampWeeks(template.total_weeks),
     })
     .select('id')
     .single()

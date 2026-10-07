@@ -12,9 +12,12 @@ function emptyDay(orderIndex: number): ProgramDay {
   return { day_label: `Day ${orderIndex + 1}`, order_index: orderIndex, exercises: [emptyExercise(0)] }
 }
 
+const WEEK_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12]
+
 export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
   const router = useRouter()
   const [name, setName] = useState(initial?.name ?? 'My Program')
+  const [totalWeeks, setTotalWeeks] = useState<number>(initial?.total_weeks ?? 8)
   const [days, setDays] = useState<ProgramDay[]>(initial?.days ?? [emptyDay(0)])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,7 +70,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
   async function handleSave() {
     setSaving(true)
     setError(null)
-    const draft: ProgramDraft = { name, days }
+    const draft: ProgramDraft = { name, total_weeks: totalWeeks, days }
 
     const res = await fetch('/api/programs', {
       method: 'POST',
@@ -88,13 +91,29 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-muted">Program name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="input-field mt-1 max-w-sm"
-        />
+      <div className="flex flex-wrap gap-4">
+        <div className="min-w-0 flex-1">
+          <label className="block text-sm font-medium text-muted">Program name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input-field mt-1 max-w-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted">Length</label>
+          <select
+            value={totalWeeks}
+            onChange={(e) => setTotalWeeks(Number(e.target.value))}
+            className="input-field mt-1"
+          >
+            {WEEK_OPTIONS.map((w) => (
+              <option key={w} value={w}>
+                {w} weeks
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -170,7 +189,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <button onClick={handleSave} disabled={saving} className="btn-accent">
-        {saving ? 'Saving…' : 'Save program'}
+        {saving ? 'Saving...' : 'Save program'}
       </button>
     </div>
   )

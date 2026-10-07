@@ -1,13 +1,19 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { ProgramDraft } from '@/lib/types'
 
+export function clampWeeks(value: unknown): number {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 8
+  return Math.min(12, Math.max(4, Math.round(n)))
+}
+
 // The user's most recently created program, with its days and exercises
 // nested, in display order. Treated as "the current program" for v1 --
 // no multi-program switching UI yet, but the schema supports it later.
 export async function getCurrentProgram(supabase: SupabaseClient, userId: string) {
   const { data: program } = await supabase
     .from('user_programs')
-    .select('id, name, source, created_at')
+    .select('id, name, source, created_at, total_weeks')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -56,6 +62,55 @@ export async function getCurrentProgram(supabase: SupabaseClient, userId: string
   return { ...program, days: sortedDays }
 }
 
+export type CurrentProgram = NonNullable<Awaited<ReturnType<typeof getCurrentProgram>>>
+
+export type ProgramPosition =
+  | { finished: true; totalWeeks: number; totalDays: number; doneCount: number }
+  | {
+      finished: false
+      week: number
+      totalWeeks: number
+      dayIndex: number
+      day: CurrentProgram['days'][number]
+      totalDays: number
+      doneCount: number
+    }
+
+// Where the user is in their program: the first (week, day) that has not
+// been marked done or skipped. Nothing is stored for "current day" -- it is
+// always derived from program_day_progress, so it can't drift out of sync.
+export async function getProgramPosition(
+  supabase: SupabaseClient,
+  program: CurrentProgram
+): Promise<ProgramPosition> {
+  const totalWeeks = clampWeeks(program.total_weeks)
+  const totalDays = totalWeeks * program.days.length
+
+  const { data: rows } = await supabase
+    .from('program_day_progress')
+    .select('user_program_day_id, week_number')
+    .eq('user_program_id', program.id)
+
+  const finished = new Set(
+    (rows ?? []).map(
+      (r: { user_program_day_id: string; week_number: number }) =>
+        `${r.week_number}:${r.user_program_day_id}`
+    )
+  )
+  const doneCount = finished.size
+
+  for (let week = 1; week <= totalWeeks; week++) {
+    for (let dayIndex = 0; dayIndex < program.days.length; dayIndex++) {
+      const day = program.days[dayIndex]
+      if (!finished.has(`${week}:${day.id}`)) {
+        return { finished: false, week, totalWeeks, dayIndex, day, totalDays, doneCount }
+      }
+    }
+  }
+
+  return { finished: true, totalWeeks, totalDays, doneCount }
+}
+
 export async function getOrCreateExercise(
   supabase: SupabaseClient,
   userId: string,
@@ -91,7 +146,12 @@ export async function insertProgramFromDraft(
 ) {
   const { data: program, error: programError } = await supabase
     .from('user_programs')
-    .insert({ user_id: userId, name: draft.name, source })
+    .insert({
+      user_id: userId,
+      name: draft.name,
+      source,
+      total_weeks: clampWeeks(draft.total_weeks),
+    })
     .select('id')
     .single()
 

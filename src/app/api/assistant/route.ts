@@ -17,6 +17,7 @@ When (and ONLY when) the user asks you to create or change a program, do two thi
 \`\`\`program_json
 {
   "name": "string",
+  "total_weeks": 8,
   "days": [
     {
       "day_label": "string",
@@ -34,6 +35,9 @@ When (and ONLY when) the user asks you to create or change a program, do two thi
   ]
 }
 \`\`\`
+
+total_weeks must be a whole number from 4 to 12. If the user doesn't say how long they want the
+program to run, use 8.
 
 Never invent a program unprompted, and never claim you have already changed the user's saved
 program -- you only ever propose; a visible "Apply" step elsewhere in the app is what actually

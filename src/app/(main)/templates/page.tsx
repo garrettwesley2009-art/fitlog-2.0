@@ -5,7 +5,7 @@ export default async function TemplatesPage() {
   const supabase = await createClient()
   const { data: templates } = await supabase
     .from('templates')
-    .select('id, name, description')
+    .select('id, name, description, total_weeks')
     .order('name', { ascending: true })
 
   return (
@@ -25,7 +25,10 @@ export default async function TemplatesPage() {
               href={`/templates/${t.id}`}
               className="glass-card p-5 transition-colors hover:bg-glass-hover"
             >
-              <h2 className="font-medium text-ink">{t.name}</h2>
+              <p className="text-xs font-medium uppercase tracking-wide text-accent">
+                {t.total_weeks} weeks
+              </p>
+              <h2 className="mt-1 font-medium text-ink">{t.name}</h2>
               {t.description && <p className="mt-1 text-sm text-muted">{t.description}</p>}
             </Link>
           ))}
