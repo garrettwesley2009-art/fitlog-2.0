@@ -19,14 +19,33 @@ export type LoggedSet = {
   exercise_name: string
 }
 
+// One set from the most recent earlier workout that had this exercise.
+export type LastTimeSet = {
+  set_index: number
+  weight: number | null
+  reps: number | null
+  rpe: number | null
+}
+
+export type LastTime = {
+  date: string
+  sets: LastTimeSet[]
+}
+
+function describeSet(s: LastTimeSet) {
+  return `${s.weight ?? '-'} x ${s.reps ?? '-'}${s.rpe ? ` @ RPE ${s.rpe}` : ''}`
+}
+
 export function WorkoutLogger({
   day,
   initialWorkoutId,
   initialSets,
+  lastTime,
 }: {
   day: DayLite | null
   initialWorkoutId: string | null
   initialSets: LoggedSet[]
+  lastTime: Record<string, LastTime>
 }) {
   const router = useRouter()
   const [workoutId, setWorkoutId] = useState<string | null>(initialWorkoutId)
@@ -140,6 +159,10 @@ export function WorkoutLogger({
           const sets = loggedSets.filter((s) => s.exercise_name === name)
           const draft = draftFor(name)
           const target = targets.get(name)
+          const last = lastTime[name]
+          // The matching set from last time (same set number) becomes the
+          // greyed-out hint in the inputs, so the target to beat is right there.
+          const lastSameSet = last?.sets[sets.length] ?? last?.sets[last.sets.length - 1]
           return (
             <div key={name} className="glass-card p-4">
               <div className="flex items-baseline justify-between gap-3">
@@ -151,35 +174,53 @@ export function WorkoutLogger({
                 )}
               </div>
 
+              {last && (
+                <div className="inset-card mt-2 px-3 py-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-accent">
+                    Last time{last.date ? ` - ${last.date}` : ''}
+                  </p>
+                  <ul className="mt-1 space-y-0.5 text-sm text-muted">
+                    {last.sets.map((s) => (
+                      <li key={s.set_index}>
+                        Set {s.set_index}: {describeSet(s)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {sets.length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm text-muted">
-                  {sets.map((s) => (
-                    <li key={s.id}>
-                      Set {s.set_index}: {s.weight ?? '-'} x {s.reps ?? '-'}
-                      {s.rpe ? ` @ RPE ${s.rpe}` : ''}
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted">Today</p>
+                  <ul className="mt-1 space-y-1 text-sm text-ink">
+                    {sets.map((s) => (
+                      <li key={s.id}>
+                        Set {s.set_index}: {s.weight ?? '-'} x {s.reps ?? '-'}
+                        {s.rpe ? ` @ RPE ${s.rpe}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <input
                   type="number"
-                  placeholder="Weight"
+                  placeholder={lastSameSet?.weight != null ? String(lastSameSet.weight) : 'Weight'}
                   value={draft.weight}
                   onChange={(e) => updateDraft(name, { weight: e.target.value })}
                   className="input-compact w-24"
                 />
                 <input
                   type="number"
-                  placeholder="Reps"
+                  placeholder={lastSameSet?.reps != null ? String(lastSameSet.reps) : 'Reps'}
                   value={draft.reps}
                   onChange={(e) => updateDraft(name, { reps: e.target.value })}
                   className="input-compact w-20"
                 />
                 <input
                   type="number"
-                  placeholder="RPE"
+                  placeholder={lastSameSet?.rpe != null ? String(lastSameSet.rpe) : 'RPE'}
                   step="0.5"
                   value={draft.rpe}
                   onChange={(e) => updateDraft(name, { rpe: e.target.value })}
