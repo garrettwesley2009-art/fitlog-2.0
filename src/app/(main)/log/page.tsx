@@ -2,7 +2,12 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram, getProgramPosition } from '@/lib/data'
 import { WorkoutLogger } from '@/components/workout-logger'
-import type { LoggedSet, LastTime, LastTimeSet } from '@/components/workout-logger'
+import type {
+  LoggedSet,
+  LastTime,
+  LastTimeSet,
+  FeedbackEntry,
+} from '@/components/workout-logger'
 
 // "2026-10-03" -> "Oct 3". Done here on the server with a fixed locale so the
 // text is identical on the server and in the browser.
@@ -68,10 +73,22 @@ export default async function LogPage() {
     }
   }
 
+  // Feedback already given on this workout (so a refresh keeps it). If the
+  // exercise_feedback table has not been created yet this just comes back empty.
+  let initialFeedback: FeedbackEntry[] = []
+  if (initialWorkoutId) {
+    const { data: fbRows } = await supabase
+      .from('exercise_feedback')
+      .select('exercise_name, status, effort, note, swapped_to_name')
+      .eq('workout_id', initialWorkoutId)
+    initialFeedback = (fbRows ?? []) as FeedbackEntry[]
+  }
+
   // Last time: for each of today's exercises, the sets from the most recent
   // OTHER workout where that exercise was logged. It doesn't matter which
   // week or day that was, so it still works after skipped days.
   const lastTime: Record<string, LastTime> = {}
+  const history: Record<string, LastTime[]> = {}
 
   if (program && position && !position.finished) {
     const exerciseNameById = new Map<string, string>()
@@ -106,10 +123,15 @@ export default async function LogPage() {
 
         for (const [exerciseId, sets] of setsByExercise) {
           const name = exerciseNameById.get(exerciseId)!
-          if (lastTime[name]) continue // already found a more recent workout
-          lastTime[name] = {
+          const entry: LastTime = {
             date: formatDay(w.date as string | null),
             sets: sets.sort((a, b) => a.set_index - b.set_index),
+          }
+          if (!lastTime[name]) lastTime[name] = entry // most recent other workout
+          const list = history[name] ?? []
+          if (list.length < 3) {
+            list.push(entry)
+            history[name] = list
           }
         }
       }
@@ -125,37 +147,25 @@ export default async function LogPage() {
             exercise_name: e.exercise_name,
             target_sets: e.target_sets,
             target_reps: e.target_reps,
+            notes: e.notes,
           })),
         }
       : null
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">Log a workout</h1>
-        {program && position && !position.finished ? (
-          <>
-            <p className="mt-1 text-sm text-muted">Following: {program.name}</p>
-            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-accent">
-              Week {position.week} of {position.totalWeeks} &middot; {position.day.day_label}
-            </p>
-          </>
-        ) : (
-          <p className="mt-1 text-sm text-muted">
-            No program set -- logging freeform.{' '}
-            <Link href="/templates" className="text-ink underline">
-              pick a template
-            </Link>
-          </p>
-        )}
-      </div>
+  const workoutLabel =
+    program && position && !position.finished
+      ? `Week ${position.week} of ${position.totalWeeks} \u00b7 ${position.day.day_label}`
+      : 'Workout'
 
-      <WorkoutLogger
-        day={day}
-        initialWorkoutId={initialWorkoutId}
-        initialSets={initialSets}
-        lastTime={lastTime}
-      />
-    </div>
+  return (
+    <WorkoutLogger
+      day={day}
+      workoutLabel={workoutLabel}
+      initialWorkoutId={initialWorkoutId}
+      initialSets={initialSets}
+      lastTime={lastTime}
+      history={history}
+      initialFeedback={initialFeedback}
+    />
   )
 }
