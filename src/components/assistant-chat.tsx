@@ -6,13 +6,77 @@ import type { ProgramDraft } from '@/lib/types'
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
+const STARTERS = [
+  'Build me a new program',
+  'I want to get stronger',
+  'Help me build muscle',
+  'I play baseball and want more power',
+]
+
+function DraftCard({
+  draft,
+  saving,
+  onSave,
+}: {
+  draft: ProgramDraft
+  saving: boolean
+  onSave: () => void
+}) {
+  const [open, setOpen] = useState(true)
+  const weeks = draft.total_weeks ?? 8
+
+  return (
+    <div className="glass-card space-y-3 border border-accent p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-accent">New template draft</p>
+          <p className="mt-1 text-base font-semibold text-ink">{draft.name}</p>
+          <p className="text-xs text-muted">
+            {weeks} weeks &middot; {draft.days.length} training days per week
+          </p>
+        </div>
+        <button type="button" onClick={() => setOpen((v) => !v)} className="btn-ghost-sm shrink-0">
+          {open ? 'Hide' : 'Show'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+          {draft.days.map((day) => (
+            <div key={day.order_index}>
+              <p className="text-sm font-medium text-ink">{day.day_label}</p>
+              <ul className="mt-1 space-y-0.5 text-xs text-muted">
+                {day.exercises.map((ex) => (
+                  <li key={ex.order_index}>
+                    {ex.exercise_name}
+                    {ex.target_sets && ex.target_reps ? ` - ${ex.target_sets} x ${ex.target_reps}` : ''}
+                    {ex.notes ? ` (${ex.notes})` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={onSave} disabled={saving} className="btn-accent">
+          {saving ? 'Saving...' : 'Save to my programs'}
+        </button>
+        <p className="text-xs text-muted">Want a change first? Just tell the coach.</p>
+      </div>
+    </div>
+  )
+}
+
 export function AssistantChat({ programContext }: { programContext?: unknown }) {
   const router = useRouter()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [pendingDraft, setPendingDraft] = useState<ProgramDraft | null>(null)
-  const [applying, setApplying] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [savedName, setSavedName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -21,134 +85,157 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
       .then((r) => r.json())
       .then((body) => {
         if (Array.isArray(body.messages)) {
-          setMessages(body.messages.map((m: { role: string; content: string }) => ({
-            role: m.role,
-            content: m.content,
-          })))
+          setMessages(
+            body.messages.map((m: { role: string; content: string }) => ({
+              role: m.role,
+              content: m.content,
+            }))
+          )
         }
       })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, pendingDraft])
+  }, [messages, pendingDraft, savedName, loading])
 
-  async function send() {
-    const text = input.trim()
+  async function send(override?: string) {
+    const text = (override ?? input).trim()
     if (!text || loading) return
 
     setError(null)
+    setSavedName(null)
     setInput('')
     const history = messages
     setMessages((prev) => [...prev, { role: 'user', content: text }])
     setLoading(true)
 
-    const res = await fetch('/api/assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history, programContext }),
-    })
+    try {
+      const res = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history, programContext, currentDraft: pendingDraft }),
+      })
+      const body = await res.json()
 
-    const body = await res.json()
-    setLoading(false)
+      if (!res.ok) {
+        setError(body.error ?? 'The assistant had a problem responding.')
+        return
+      }
 
-    if (!res.ok) {
-      setError(body.error ?? 'The assistant had a problem responding.')
-      return
+      setMessages((prev) => [...prev, { role: 'assistant', content: body.reply }])
+      if (body.draft) setPendingDraft(body.draft)
+    } catch {
+      setError('Could not reach the assistant. Check your connection and try again.')
+    } finally {
+      setLoading(false)
     }
-
-    setMessages((prev) => [...prev, { role: 'assistant', content: body.reply }])
-    if (body.draft) setPendingDraft(body.draft)
   }
 
-  async function applyDraft() {
+  async function saveDraft() {
     if (!pendingDraft) return
-    setApplying(true)
+    setSaving(true)
     setError(null)
 
-    const res = await fetch('/api/programs/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pendingDraft),
-    })
+    try {
+      const res = await fetch('/api/programs/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pendingDraft),
+      })
+      const body = await res.json()
 
-    const body = await res.json()
-    setApplying(false)
+      if (!res.ok) {
+        setError(body.error ?? 'Could not save that program.')
+        return
+      }
 
-    if (!res.ok) {
-      setError(body.error ?? 'Could not apply that program.')
-      return
+      setSavedName(pendingDraft.name)
+      setPendingDraft(null)
+      router.refresh()
+    } catch {
+      setError('Could not save. Check your connection and try again.')
+    } finally {
+      setSaving(false)
     }
-
-    setPendingDraft(null)
-    router.push('/dashboard')
   }
 
   return (
-    <div className="glass-card flex h-[70vh] flex-col overflow-hidden">
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 && (
-          <p className="text-sm text-muted">
-            Ask for a new program, ask to customize your current one, or just ask a training question.
-          </p>
-        )}
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-              m.role === 'user'
-                ? 'ml-auto bg-accent text-white'
-                : 'bg-glass-hover text-ink'
-            }`}
-          >
-            {m.content}
-          </div>
-        ))}
-
-        {pendingDraft && (
-          <div className="inset-card p-3">
-            <p className="text-sm font-medium text-ink">
-              Proposed program: {pendingDraft.name}
-            </p>
-            <ul className="mt-1 space-y-1 text-sm text-muted">
-              {pendingDraft.days.map((d, i) => (
-                <li key={i}>
-                  <span className="font-medium text-ink">{d.day_label}:</span>{' '}
-                  {d.exercises.map((e) => e.exercise_name).join(', ')}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-3 flex gap-2">
-              <button onClick={applyDraft} disabled={applying} className="btn-accent-sm">
-                {applying ? 'Applying…' : 'Apply this program'}
-              </button>
-              <button onClick={() => setPendingDraft(null)} className="btn-ghost-sm">
-                Dismiss
-              </button>
+    <div className="space-y-3">
+      <div className="glass-card flex h-[60vh] flex-col overflow-hidden">
+        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          {messages.length === 0 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted">
+                Tell the coach what you want. It will ask a few quick questions, show you an outline, and build the
+                program with you before anything is saved.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {STARTERS.map((s) => (
+                  <button key={s} type="button" onClick={() => send(s)} className="btn-ghost-sm">
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="mt-2 text-xs text-muted">
-              Nothing is saved until you click Apply.
-            </p>
-          </div>
-        )}
+          )}
 
-        {loading && <p className="text-sm text-muted">Thinking…</p>}
-        {error && <p className="text-sm text-danger">{error}</p>}
-        <div ref={bottomRef} />
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm text-ink ${
+                  m.role === 'user' ? 'border border-accent bg-glass' : 'bg-glass-hover'
+                }`}
+              >
+                {m.content}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl bg-glass-hover px-3 py-2 text-sm text-muted">Coach is thinking...</div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {error && <p className="border-t border-line px-4 py-2 text-sm text-danger">{error}</p>}
+
+        <form
+          className="flex gap-2 border-t border-line p-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            send()
+          }}
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Message your coach"
+            className="input-field flex-1"
+            aria-label="Message your coach"
+          />
+          <button type="submit" disabled={loading || !input.trim()} className="btn-accent">
+            Send
+          </button>
+        </form>
       </div>
 
-      <div className="flex gap-2 border-t border-line p-3">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder="Message the assistant…"
-          className="input-compact min-w-0 flex-1"
-        />
-        <button onClick={send} disabled={loading} className="btn-accent-sm">
-          Send
-        </button>
-      </div>
+      {pendingDraft && <DraftCard draft={pendingDraft} saving={saving} onSave={saveDraft} />}
+
+      {savedName && (
+        <div className="glass-card space-y-2 border border-accent p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-accent">New template saved</p>
+          <p className="text-base font-semibold text-ink">{savedName}</p>
+          <p className="text-xs text-muted">It is in your programs now. You can keep chatting to build another one.</p>
+          <button type="button" onClick={() => router.push('/dashboard')} className="btn-accent-sm">
+            Go to Home
+          </button>
+        </div>
+      )}
     </div>
   )
 }
