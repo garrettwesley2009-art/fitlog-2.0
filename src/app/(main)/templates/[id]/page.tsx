@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createProgramFromTemplate } from '@/app/actions/programs'
 import { categoriesFor, categoryLabel, isNewTemplate } from '@/lib/template-meta'
 import { NewBadge } from '@/components/new-badge'
+import { BackButton } from '@/components/back-button'
 
 export default async function TemplateDetailPage({
   params,
@@ -34,6 +35,7 @@ export default async function TemplateDetailPage({
 
   return (
     <div className="space-y-6">
+      <BackButton href="/templates" label="Templates" />
       <div>
         <div className="flex items-center gap-2">
           <p className="text-xs font-medium uppercase tracking-wide text-accent">

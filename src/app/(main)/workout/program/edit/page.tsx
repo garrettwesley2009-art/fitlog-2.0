@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram } from '@/lib/data'
 import { ProgramBuilder } from '@/components/program-builder'
+import { BackButton } from '@/components/back-button'
 
 // Edit the program you are on right now, in place. Your progress and logged
 // workouts stay attached to your days.
@@ -33,6 +34,7 @@ export default async function EditCurrentProgramPage() {
 
   return (
     <div className="space-y-6">
+      <BackButton href="/workout/program" label="My Program" />
       <div>
         <h1 className="text-2xl font-semibold text-ink">Edit your program</h1>
         <p className="mt-1 text-sm text-muted">

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ProgramBuilder } from '@/components/program-builder'
 import type { ProgramDraft } from '@/lib/types'
+import { BackButton } from '@/components/back-button'
 
 // Opens a template in the Build page so the person can change anything, then
 // saves it as a brand new program of their own. The original template is never touched.
@@ -56,6 +57,7 @@ export default async function EditTemplateCopyPage({
 
   return (
     <div className="space-y-6">
+      <BackButton href={`/templates/${template.id}`} label="Template" />
       <div>
         <h1 className="text-2xl font-semibold text-ink">Edit your copy of {template.name}</h1>
         <p className="mt-1 text-sm text-muted">
