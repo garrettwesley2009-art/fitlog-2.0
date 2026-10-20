@@ -56,6 +56,7 @@ export default async function MyProgramPage() {
         <p className="mt-1 text-sm text-muted">
           {position.doneCount} of {position.totalDays} days finished
         </p>
+        <Link href="/workout/program/edit" className="btn-ghost mt-3 inline-flex">Edit program</Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

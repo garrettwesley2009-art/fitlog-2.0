@@ -18,7 +18,8 @@ const HEX = '[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]'
 // Where the picker is pointed: add to the end of a day, or replace one exercise.
 type Target = { day: number; replace: number | null }
 
-export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
+// With programId the builder edits that program in place; without it, it makes a new one.
+export function ProgramBuilder({ initial, programId }: { initial?: ProgramDraft; programId?: string }) {
   const router = useRouter()
   const [name, setName] = useState(initial?.name ?? 'My Program')
   const [totalWeeks, setTotalWeeks] = useState<number>(initial?.total_weeks ?? 8)
@@ -168,8 +169,8 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
     const draft: ProgramDraft = { name: name.trim(), total_weeks: totalWeeks, days: cleanDays }
 
     try {
-      const res = await fetch('/api/programs', {
-        method: 'POST',
+      const res = await fetch(programId ? `/api/programs/${programId}` : '/api/programs', {
+        method: programId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draft),
       })
@@ -178,7 +179,12 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
         setError(body.error ?? 'Something went wrong.')
         return
       }
-      router.push('/dashboard')
+      if (programId) {
+        router.push('/workout/program')
+        router.refresh()
+      } else {
+        router.push('/dashboard')
+      }
     } catch {
       setError('Could not save. Check your connection and try again.')
     } finally {
@@ -340,7 +346,7 @@ export function ProgramBuilder({ initial }: { initial?: ProgramDraft }) {
 
       <div className="sticky bottom-24 z-10 -mx-1 bg-linear-to-t from-canvas via-canvas/90 to-transparent px-1 pb-1 pt-6">
         <button type="button" onClick={handleSave} disabled={saving} className="btn-accent w-full py-4 text-base">
-          {saving ? 'Saving...' : 'Save program'}
+          {saving ? 'Saving...' : programId ? 'Save changes' : 'Save program'}
         </button>
       </div>
 
