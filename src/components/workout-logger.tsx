@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { startWorkoutForCurrentDay, finishWorkout } from '@/app/actions/workouts'
-import { deleteLoggedSet, saveExerciseFeedback } from '@/app/actions/log'
+import { enqueue, flush, pendingCount, readPending, resetLocal } from '@/lib/outbox'
 import { saveMaxes } from '@/app/actions/maxes'
 import {
   parseSetGoals,
@@ -260,7 +259,8 @@ export function WorkoutLogger({
     )
     return first
   })
-  const [workoutId, setWorkoutId] = useState<string | null>(initialWorkoutId)
+  // Before the server has made this workout, saves are filed under a local key on the phone.
+  const workoutRef = initialWorkoutId ?? `local:${day?.id ?? 'free'}`
   const [editing, setEditing] = useState<number | null>(null)
   const [sheet, setSheet] = useState<null | 'menu' | 'history' | 'replace' | 'effort' | 'program' | 'maxes'>(() => {
     const first = buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5).find(
@@ -288,9 +288,45 @@ export function WorkoutLogger({
   const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const startingRef = useRef<Promise<string | null> | null>(null)
   const messageTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Bring back anything still waiting on the phone (for example after closing the app with no signal).
+  useEffect(() => {
+    if (!initialWorkoutId) resetLocal(workoutRef)
+    const pending = readPending(workoutRef)
+    if (pending.sets.length === 0 && pending.feedback.length === 0) return
+    setExs((prev) => {
+      const next = prev.map((e) => {
+        const mine = pending.sets.filter((o) => o.exercise === e.name)
+        const fb = pending.feedback.find((f) => f.input.exerciseName === e.name)
+        if (mine.length === 0 && !fb) return e
+        let sets = e.sets
+        for (const o of mine) {
+          const i = o.setIndex - 1
+          if (i >= 0 && i < sets.length) {
+            sets = sets.map((x, n) =>
+              n === i ? { ...x, reps: String(o.reps), weight: String(o.weight), done: true, touchedWeight: true } : x
+            )
+          }
+        }
+        let out: ExState = { ...e, sets }
+        if (fb) {
+          out = {
+            ...out,
+            status: fb.input.status === 'skipped' ? 'skipped' : 'done',
+            effort: fb.input.effort,
+            note: fb.input.note ?? out.note,
+          }
+        }
+        return out
+      })
+      const first = next.findIndex((e) => e.status === 'active')
+      setIdx(first)
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const summary = idx === -1
   const ex: ExState | null = idx >= 0 ? exs[idx] : null
@@ -372,26 +408,6 @@ export function WorkoutLogger({
 
   const stopRest = useCallback(() => setRestEndsAt(null), [])
 
-  // Creates the workout the first time something is saved (not when the page opens).
-  async function ensureWorkout(): Promise<string | null> {
-    if (workoutId) return workoutId
-    if (!startingRef.current) {
-      startingRef.current = startWorkoutForCurrentDay()
-        .then((res) => {
-          if (res.ok) {
-            setWorkoutId(res.workoutId)
-            return res.workoutId
-          }
-          setError(res.error)
-          return null
-        })
-        .finally(() => {
-          startingRef.current = null
-        })
-    }
-    return startingRef.current
-  }
-
   function updateEx(i: number, patch: (e: ExState) => ExState) {
     setExs((prev) => prev.map((e, n) => (n === i ? patch(e) : e)))
   }
@@ -431,40 +447,19 @@ export function WorkoutLogger({
       return
     }
 
-    setBusy(true)
     setError(null)
-    try {
-      const id = await ensureWorkout()
-      if (!id) return
-
-      const wasEditing = editing !== null
-      if (set.done) {
-        const removed = await deleteLoggedSet(id, ex.name, ci + 1)
-        if (!removed.ok) {
-          setError(removed.error)
-          return
-        }
-      }
-
-      const res = await fetch('/api/sets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workoutId: id,
-          exerciseName: ex.name,
-          setIndex: ci + 1,
-          weight: set.weight.trim() === '' ? 0 : Number(set.weight),
-          reps: Number(set.reps),
-          rpe: null,
-          notes: null,
-        }),
-      })
-
-      if (!res.ok) {
-        setError('Could not save that set. Try again.')
-        return
-      }
-
+    const wasEditing = editing !== null
+    // Saved on the phone first, so a dead zone never loses a set. It uploads on its own.
+    enqueue({
+      type: 'set',
+      workout: workoutRef,
+      exercise: ex.name,
+      setIndex: ci + 1,
+      weight: set.weight.trim() === '' ? 0 : Number(set.weight),
+      reps: Number(set.reps),
+    })
+    void flush()
+    {
       const loggedWeight = set.weight
       const nextSets = ex.sets.map((s, n) => {
         if (n === ci) return { ...s, done: true, touchedWeight: true }
@@ -492,8 +487,6 @@ export function WorkoutLogger({
       const rest = restOn ? (ex.rests[ci] ?? 0) : 0
       if (rest > 0) setRestEndsAt(Date.now() + rest * 1000)
       else flash(`Set ${ci + 1} logged`)
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -533,19 +526,21 @@ export function WorkoutLogger({
     exerciseName: string,
     swappedTo: string | null
   ): Promise<boolean> {
-    const id = await ensureWorkout()
-    if (!id) return false
-    const res = await saveExerciseFeedback({
-      workoutId: id,
-      exerciseName,
-      status,
-      effort,
-      note: note.trim() || null,
-      swappedToName: swappedTo,
-      plannedSets: e.plan.target_sets,
-      plannedReps: e.plan.target_reps,
+    enqueue({
+      type: 'feedback',
+      workout: workoutRef,
+      input: {
+        exerciseName,
+        status,
+        effort,
+        note: note.trim() || null,
+        swappedToName: swappedTo,
+        plannedSets: e.plan.target_sets,
+        plannedReps: e.plan.target_reps,
+      },
     })
-    return res.ok
+    void flush()
+    return true
   }
 
   function goToNext(from: number) {
@@ -719,19 +714,22 @@ export function WorkoutLogger({
   }
 
   async function handleFinish() {
-    if (!workoutId) {
+    if (!exs.some((e) => e.sets.some((x) => x.done))) {
       setError('Log at least one set before finishing.')
       return
     }
     setFinishing(true)
     setError(null)
-    const res = await finishWorkout(workoutId)
+    enqueue({ type: 'finish', workout: workoutRef })
+    // Give the upload a few seconds. With no signal we stay put and it finishes on its own later.
+    await Promise.race([flush(), new Promise<void>((r) => setTimeout(r, 8000))])
     setFinishing(false)
-    if (!res.ok) {
-      setError(res.error)
+    if (pendingCount() === 0) {
+      router.push('/dashboard')
       return
     }
-    router.push('/dashboard')
+    setMessage(null)
+    setError('Saved on your phone. It will finish by itself when you have signal.')
   }
 
   // -------------------------------------------------------------------------

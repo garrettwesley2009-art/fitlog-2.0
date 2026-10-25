@@ -12,8 +12,8 @@ type SetPayload = {
   notes: string | null
 }
 
-// Saves one logged set immediately -- this is the "constant log" that
-// persists to the cloud as the user trains, not a batch save at the end.
+// Saves one logged set. Sending the same set again REPLACES it (same workout, exercise and set
+// number) instead of adding a second copy, so a retry after a bad connection can never double up.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: userData } = await supabase.auth.getUser()
@@ -30,6 +30,24 @@ export async function POST(request: Request) {
 
   try {
     const exerciseId = await getOrCreateExercise(supabase, user.id, body.exerciseName)
+
+    // Only touches this person's own workout (row level security enforces it too).
+    const { data: workout } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('id', body.workoutId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!workout) {
+      return NextResponse.json({ error: 'Workout not found' }, { status: 404 })
+    }
+
+    await supabase
+      .from('sets')
+      .delete()
+      .eq('workout_id', body.workoutId)
+      .eq('exercise_id', exerciseId)
+      .eq('set_index', body.setIndex)
 
     const { data: created, error } = await supabase
       .from('sets')
