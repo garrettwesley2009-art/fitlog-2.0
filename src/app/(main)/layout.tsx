@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NavBar } from '@/components/nav-bar'
+import { Heartbeat } from '@/components/heartbeat'
 
 export default async function MainLayout({
   children,
@@ -22,6 +23,7 @@ export default async function MainLayout({
   return (
     <div className="min-h-screen bg-canvas bg-glow text-ink">
       <NavBar displayName={displayName} />
+      <Heartbeat />
       {/* pb-28 leaves room so the bottom bar never covers the end of a page */}
       <main className="mx-auto max-w-5xl px-4 pb-28 pt-6">{children}</main>
     </div>

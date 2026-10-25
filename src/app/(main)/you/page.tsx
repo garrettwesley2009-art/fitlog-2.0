@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import { logout } from '@/app/actions/auth'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
   const user = data.user!
+  const { data: isAdmin } = await supabase.rpc('is_admin')
 
   const displayName =
     (user.user_metadata?.display_name as string | undefined) ?? user.email ?? 'Account'
@@ -26,6 +28,16 @@ export default async function ProfilePage() {
           A few quick questions about you and your goals, so your coaching can be more accurate.
         </p>
       </div>
+
+      {isAdmin === true && (
+        <Link href="/admin" className="glass-card flex items-center justify-between p-5">
+          <span>
+            <span className="block text-xs font-medium uppercase tracking-wide text-accent">Admin</span>
+            <span className="mt-1 block text-sm text-ink">Live users</span>
+          </span>
+          <span className="text-muted">&rsaquo;</span>
+        </Link>
+      )}
 
       <form action={logout}>
         <button className="btn-ghost">Log out</button>
