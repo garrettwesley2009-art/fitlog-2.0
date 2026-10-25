@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { login } from '@/app/actions/auth'
 import { AuthShell } from '@/components/auth-shell'
+import { PasswordField } from '@/components/password-field'
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; email?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, email } = await searchParams
 
   return (
     <AuthShell title="Log in" subtitle="Welcome back.">
@@ -20,11 +21,22 @@ export default async function LoginPage({
       <form action={login} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-muted">Email</label>
-          <input name="email" type="email" required className="input-field mt-1" />
+          <input
+            name="email"
+            type="email"
+            required
+            defaultValue={email ?? ''}
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="email"
+            className="input-field mt-1"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-muted">Password</label>
-          <input name="password" type="password" required className="input-field mt-1" />
+          <PasswordField autoComplete="current-password" />
         </div>
         <button type="submit" className="btn-accent w-full">
           Log in

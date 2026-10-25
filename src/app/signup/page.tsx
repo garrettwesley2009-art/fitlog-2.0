@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { signup } from '@/app/actions/auth'
 import { AuthShell } from '@/components/auth-shell'
+import { PasswordField } from '@/components/password-field'
 
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; email?: string; name?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, email, name } = await searchParams
 
   return (
     <AuthShell title="Create your account" subtitle="One account, just for you.">
@@ -20,21 +21,33 @@ export default async function SignupPage({
       <form action={signup} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-muted">Display name</label>
-          <input name="displayName" type="text" required className="input-field mt-1" />
+          <input
+            name="displayName"
+            type="text"
+            required
+            defaultValue={name ?? ''}
+            autoComplete="name"
+            className="input-field mt-1"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-muted">Email</label>
-          <input name="email" type="email" required className="input-field mt-1" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-muted">Password</label>
           <input
-            name="password"
-            type="password"
+            name="email"
+            type="email"
             required
-            minLength={6}
+            defaultValue={email ?? ''}
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="email"
             className="input-field mt-1"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted">Password (6 or more characters)</label>
+          <PasswordField autoComplete="new-password" minLength={6} />
         </div>
         <button type="submit" className="btn-accent w-full">
           Sign up
