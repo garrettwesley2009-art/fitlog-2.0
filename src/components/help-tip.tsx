@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 // A small (?) button that opens a short explanation. Put it right beside the thing it explains.
 export function HelpTip({ title, children, className = '' }: { title: string; children: ReactNode; className?: string }) {
@@ -30,7 +31,8 @@ export function HelpTip({ title, children, className = '' }: { title: string; ch
       >
         ?
       </button>
-      {open && (
+      {open &&
+        createPortal(
         <div
           className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center"
           onClick={() => setOpen(false)}
@@ -50,8 +52,9 @@ export function HelpTip({ title, children, className = '' }: { title: string; ch
               Got it
             </button>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   )
 }

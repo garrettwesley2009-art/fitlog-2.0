@@ -1,3 +1,4 @@
+import { HelpTip } from '@/components/help-tip'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram, getProgramPosition } from '@/lib/data'
@@ -179,7 +180,7 @@ export default async function HomePage() {
       {program && position && !position.finished && (
         <section className="glass-card p-5">
           <div className="flex items-baseline justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">This week</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">This week{' '}<HelpTip title="This week"><p>Each circle is one workout day in your program. A check means done, a dash means skipped, and the ringed circle is today.</p><p>Your program is a set number of weeks. Finish every day (or skip it) to move on to the next week.</p></HelpTip></p>
             <p className="text-xs text-muted">
               Week {position.week} of {position.totalWeeks}
             </p>
@@ -226,7 +227,7 @@ export default async function HomePage() {
       {/* Streak */}
       <section className="glass-card flex items-center justify-between gap-4 p-5">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">Streak</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">Streak{' '}<HelpTip title="Streak"><p>How many weeks in a row you trained at least once, Monday to Sunday. Miss a whole week and it starts over.</p></HelpTip></p>
           {stats.streakWeeks > 0 ? (
             <>
               <p className="mt-1 text-4xl font-extrabold leading-none text-accent">
@@ -262,7 +263,7 @@ export default async function HomePage() {
       {/* Weight lifted per workout */}
       <section className="glass-card p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-muted">
-          Weight lifted per workout
+          Weight lifted per workout{' '}<HelpTip title="Weight lifted"><p>Your total for each workout: weight x reps added up over every set. Taller bars mean more total work. It shows your last 7 workouts.</p></HelpTip>
         </p>
         <VolumeBars points={stats.volumes} />
       </section>

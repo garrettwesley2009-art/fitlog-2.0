@@ -1,3 +1,4 @@
+import { HelpTip } from '@/components/help-tip'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram, getProgramPosition } from '@/lib/data'
@@ -54,7 +55,7 @@ export default async function MyProgramPage() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">{program.name}</h1>
         <p className="mt-1 text-sm text-muted">
-          {position.doneCount} of {position.totalDays} days finished
+          {position.doneCount} of {position.totalDays} days finished{' '}<HelpTip title="How programs work"><p>A program is a set number of weeks. Each week you do every day in order, then the program moves to the next week.</p><p>Days are not tied to the calendar. Do them whenever suits you. Tap Skip on Home if you have to miss one.</p></HelpTip>
         </p>
         <Link href="/workout/program/edit" className="btn-ghost mt-3 inline-flex">Edit program</Link>
       </div>
