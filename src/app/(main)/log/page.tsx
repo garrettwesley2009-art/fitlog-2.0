@@ -157,8 +157,48 @@ export default async function LogPage() {
       ? `Week ${position.week} of ${position.totalWeeks} \u00b7 ${position.day.day_label}`
       : 'Workout'
 
+  // Saved one-rep maxes (lb), keyed by lowercase exercise name. If the user_maxes table has not
+  // been created yet this comes back empty and the Log page just shows percents without weights.
+  const maxes: Record<string, number> = {}
+  {
+    const { data: maxRows } = await supabase
+      .from('user_maxes')
+      .select('one_rm, exercises(name)')
+      .eq('user_id', user.id)
+    for (const row of (maxRows ?? []) as unknown as {
+      one_rm: number | string
+      exercises: { name: string } | null
+    }[]) {
+      const name = row.exercises?.name
+      if (name && Number(row.one_rm) > 0) maxes[name.toLowerCase()] = Number(row.one_rm)
+    }
+  }
+
+  // The whole program (read-only) for the "Program" viewer on the Log screen.
+  const programLite =
+    program && position && !position.finished
+      ? {
+          name: program.name,
+          week: position.week,
+          totalWeeks: position.totalWeeks,
+          currentDayId: position.day.id,
+          days: program.days.map((d) => ({
+            id: d.id,
+            day_label: d.day_label,
+            exercises: d.exercises.map((e) => ({
+              exercise_name: e.exercise_name,
+              target_sets: e.target_sets,
+              target_reps: e.target_reps,
+              notes: e.notes,
+            })),
+          })),
+        }
+      : null
+
   return (
     <WorkoutLogger
+      program={programLite}
+      maxes={maxes}
       day={day}
       workoutLabel={workoutLabel}
       initialWorkoutId={initialWorkoutId}

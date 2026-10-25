@@ -5,6 +5,7 @@ import { createProgramFromTemplate } from '@/app/actions/programs'
 import { categoriesFor, categoryLabel, isNewTemplate } from '@/lib/template-meta'
 import { NewBadge } from '@/components/new-badge'
 import { BackButton } from '@/components/back-button'
+import { describePlan } from '@/lib/log-plan'
 
 export default async function TemplateDetailPage({
   params,
@@ -88,7 +89,7 @@ export default async function TemplateDetailPage({
                   return (
                     <li key={i}>
                       {exerciseName}
-                      {ex.target_sets && ex.target_reps ? ` - ${ex.target_sets}x${ex.target_reps}` : ''}
+                      {ex.target_sets && ex.target_reps ? ` - ${describePlan(ex.target_sets, ex.target_reps)}` : ''}
                       {ex.notes ? ` (${ex.notes})` : ''}
                     </li>
                   )

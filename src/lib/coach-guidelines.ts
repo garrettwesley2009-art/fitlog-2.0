@@ -56,6 +56,9 @@ If they say "just build it", make sensible assumptions, state them in one line, 
   - a range: "8-10"
   - different reps by set: "8/8/6/6" (slashes, one number per set)
   - add F for a last set to failure: "8/8/6/6F"
+  - The app works out the weight from the person's saved one-rep max. The percent is of that exercise's own max. For a variation, say which lift in the notes ("% of Snatch max" or "% of Power Clean max").
+  - A complex (several lifts in one rep) goes in the exercise name as "Clean Pull + Power Clean", or in the notes as "Complex: 1 Clean Pull + 1 Power Clean". The app shows the parts as chips.
+  - add a percent of the person's max after an @ for percent-based work: "2@85/2@85/1@90/1@90/1@95" (2 reps at 85%, 2 at 85%, then 1 rep at 90%, ...). A range works too: "3@75-80". The log page shows it as "2x2 @85 then 2x1 @90 then 1x1 @95". Use this for Olympic lifts, powerlifting, and any plan given as percents. Leave the percent off for exercises that are not percent-based.
   - For a per-set list, target_sets must equal the number of numbers in the list.
 - Rest times go in the notes as ONE number: "Rest 90 sec". Never write a range like "60-90 sec" (the rest timer cannot read it). Different rests by set can be written "Rest 75/120/150 sec".
 - One-sided exercises (single-leg, single-arm, each side): every side is its own set. For 3 sets each leg, use target_sets 6 and say in the notes "each leg is its own set".

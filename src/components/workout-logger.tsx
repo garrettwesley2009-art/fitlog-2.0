@@ -5,7 +5,18 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startWorkoutForCurrentDay, finishWorkout } from '@/app/actions/workouts'
 import { deleteLoggedSet, saveExerciseFeedback } from '@/app/actions/log'
-import { parseSetGoals, parseRests } from '@/lib/log-plan'
+import { saveMaxes } from '@/app/actions/maxes'
+import {
+  parseSetGoals,
+  parseRests,
+  hasPercent,
+  percentSegments,
+  maxBasis,
+  targetWeight,
+  fmtTarget,
+  estimateMax,
+  complexParts,
+} from '@/lib/log-plan'
 
 // ---------------------------------------------------------------------------
 // Types shared with the Log page (page.tsx)
@@ -21,6 +32,15 @@ export type DayLite = {
   id: string
   day_label: string
   exercises: PlanExercise[]
+}
+
+// The whole program, so the Log page can show the rest of it (read-only).
+export type ProgramLite = {
+  name: string
+  week: number
+  totalWeeks: number
+  currentDayId: string
+  days: DayLite[]
 }
 
 export type LoggedSet = {
@@ -60,6 +80,9 @@ type SetState = {
   reps: string
   weight: string
   toFailure: boolean
+  // Percent of max from the plan ("85" or "75-80"), shown as a badge.
+  percent: string | null
+  auto: boolean // weight was filled in from a percent of the saved max
   done: boolean
   touchedWeight: boolean
 }
@@ -78,6 +101,7 @@ type ExState = {
 
 const EFFORT_LABELS = ['Very easy', 'Easy', 'Just right', 'Hard', 'Max effort']
 const REST_PREF_KEY = 'fitlog.restTimer'
+const STEP_PREF_KEY = 'fitlog.weightStep'
 const HEX = '[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]'
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
@@ -91,6 +115,45 @@ function fmtClock(total: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function PercentBadge({ percent }: { percent: string }) {
+  return (
+    <span className="rounded-md border border-accent px-1.5 py-0.5 text-[11px] font-bold normal-case tracking-normal text-accent">
+      @{percent}%
+    </span>
+  )
+}
+
+// "5 sets · 2x2 @85 then 2x1 @90" (percent in the accent color), or plain "3 sets · 8-10".
+function PlanLine({ sets, reps }: { sets: number | null; reps: string | null }) {
+  const goals = parseSetGoals(reps, sets)
+  if (hasPercent(goals)) {
+    return (
+      <>
+        {sets ?? goals.length} sets &middot;{' '}
+        {percentSegments(goals).map((seg, k) => (
+          <span key={k}>
+            {k > 0 && <span> then </span>}
+            {seg.sets}x{seg.reps}
+            {seg.toFailure ? 'F' : ''}
+            {seg.percent && <span className="font-semibold text-accent"> @{seg.percent}</span>}
+          </span>
+        ))}
+      </>
+    )
+  }
+  return (
+    <>
+      {sets ?? goals.length} sets{reps ? ` \u00b7 ${reps}` : ''}
+    </>
+  )
+}
+
+// Splits "Week A - Day 1 - Monday" into group "Week A" and short label "Day 1 - Monday".
+function splitDayLabel(label: string): { group: string | null; short: string } {
+  const m = label.match(/^\s*(Week\s+[A-Za-z0-9]+)\s*[-:\u2013\u2014]\s*(.+)$/i)
+  return m ? { group: m[1], short: m[2] } : { group: null, short: label }
+}
+
 function describe(s: LastTimeSet) {
   return `${s.weight ?? '-'}x${s.reps ?? '-'}`
 }
@@ -99,7 +162,9 @@ function buildExercises(
   day: DayLite | null,
   logged: LoggedSet[],
   lastTime: Record<string, LastTime>,
-  feedback: FeedbackEntry[]
+  feedback: FeedbackEntry[],
+  maxes: Record<string, number>,
+  step: number
 ): ExState[] {
   return (day?.exercises ?? []).map((plan, index) => {
     const swap = feedback.find(
@@ -109,6 +174,7 @@ function buildExercises(
     const fb = feedback.find((f) => f.exercise_name === name && f.status !== 'swapped')
 
     const goals = parseSetGoals(plan.target_reps, plan.target_sets)
+    const basisMax = swap ? undefined : maxes[maxBasis(plan.exercise_name, plan.notes).toLowerCase()]
     const last = lastTime[name] ?? lastTime[plan.exercise_name]
     const mine = logged.filter((s) => s.exercise_name === name)
     const byIndex = new Map(mine.map((s) => [s.set_index, s] as const))
@@ -122,6 +188,8 @@ function buildExercises(
           reps: numStr(done.reps),
           weight: numStr(done.weight),
           toFailure: Boolean(goals[i]?.toFailure),
+          percent: goals[i]?.percent ?? null,
+          auto: false,
           done: true,
           touchedWeight: true,
         })
@@ -129,10 +197,14 @@ function buildExercises(
       }
       // Reps start at the plan; weight starts at what they lifted last time.
       const prev = last ? (last.sets[i] ?? last.sets[last.sets.length - 1]) : undefined
+      // A percent plus a saved max beats last time's weight: the plan says what to lift.
+      const tw = targetWeight(basisMax, goals[i]?.percent ?? null, step)
       sets.push({
         reps: numStr(goals[i]?.reps ?? prev?.reps),
-        weight: numStr(prev?.weight),
+        weight: tw ? String(tw.low) : numStr(prev?.weight),
         toFailure: Boolean(goals[i]?.toFailure),
+        percent: goals[i]?.percent ?? null,
+        auto: Boolean(tw),
         done: false,
         touchedWeight: false,
       })
@@ -163,6 +235,8 @@ export function WorkoutLogger({
   lastTime,
   history,
   initialFeedback,
+  program = null,
+  maxes: initialMaxes = {},
 }: {
   day: DayLite | null
   workoutLabel: string
@@ -171,26 +245,38 @@ export function WorkoutLogger({
   lastTime: Record<string, LastTime>
   history: Record<string, LastTime[]>
   initialFeedback: FeedbackEntry[]
+  program?: ProgramLite | null
+  // Saved one-rep maxes in lb, keyed by lowercase exercise name.
+  maxes?: Record<string, number>
 }) {
   const router = useRouter()
 
   const [exs, setExs] = useState<ExState[]>(() =>
-    buildExercises(day, initialSets, lastTime, initialFeedback)
+    buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5)
   )
   const [idx, setIdx] = useState<number>(() => {
-    const first = buildExercises(day, initialSets, lastTime, initialFeedback).findIndex(
+    const first = buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5).findIndex(
       (e) => e.status === 'active'
     )
     return first
   })
   const [workoutId, setWorkoutId] = useState<string | null>(initialWorkoutId)
   const [editing, setEditing] = useState<number | null>(null)
-  const [sheet, setSheet] = useState<null | 'menu' | 'history' | 'replace' | 'effort'>(() => {
-    const first = buildExercises(day, initialSets, lastTime, initialFeedback).find(
+  const [sheet, setSheet] = useState<null | 'menu' | 'history' | 'replace' | 'effort' | 'program' | 'maxes'>(() => {
+    const first = buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5).find(
       (e) => e.status === 'active'
     )
     return first && first.sets.length > 0 && first.sets.every((s) => s.done) ? 'effort' : null
   })
+  const [viewDayId, setViewDayId] = useState<string | null>(null)
+  // Saved maxes (lb, by lowercase lift name) and the plate rounding for worked-out weights.
+  const [maxes, setMaxes] = useState<Record<string, number>>(initialMaxes)
+  const [step, setStep] = useState<number>(5)
+  const [maxDraft, setMaxDraft] = useState<Record<string, string>>({})
+  const [maxPromptHidden, setMaxPromptHidden] = useState(false)
+  const [estFor, setEstFor] = useState<string | null>(null)
+  const [estW, setEstW] = useState('')
+  const [estR, setEstR] = useState('')
   const [pickedEffort, setPickedEffort] = useState<number | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
@@ -208,6 +294,36 @@ export function WorkoutLogger({
 
   const summary = idx === -1
   const ex: ExState | null = idx >= 0 ? exs[idx] : null
+
+  // Remember the plate rounding on this device (nice to have, never required).
+  useEffect(() => {
+    try {
+      const saved = Number(window.localStorage.getItem(STEP_PREF_KEY))
+      if (saved === 1 || saved === 2.5 || saved === 5) setStep(saved)
+    } catch {
+      /* storage unavailable */
+    }
+  }, [])
+
+  // Whenever a max or the rounding changes, refill the weights of sets that have a percent and
+  // have not been touched or logged yet.
+  useEffect(() => {
+    setExs((prev) =>
+      prev.map((e) => {
+        if (e.swappedFrom) return e
+        const max = maxes[maxBasis(e.plan.exercise_name, e.plan.notes).toLowerCase()]
+        return {
+          ...e,
+          sets: e.sets.map((st) => {
+            if (st.done || st.touchedWeight || !st.percent) return st
+            const tw = targetWeight(max, st.percent, step)
+            if (!tw) return st.auto ? { ...st, weight: '', auto: false } : st
+            return { ...st, weight: String(tw.low), auto: true }
+          }),
+        }
+      })
+    )
+  }, [maxes, step])
 
   // Remember the rest timer choice on this device (nice to have, never required).
   useEffect(() => {
@@ -353,7 +469,7 @@ export function WorkoutLogger({
       const nextSets = ex.sets.map((s, n) => {
         if (n === ci) return { ...s, done: true, touchedWeight: true }
         // The sets after this one follow the weight you actually used.
-        if (!wasEditing && n > ci && !s.done && !s.touchedWeight) return { ...s, weight: loggedWeight }
+        if (!wasEditing && n > ci && !s.done && !s.touchedWeight && !s.auto) return { ...s, weight: loggedWeight }
         return s
       })
       updateEx(idx, (e) => ({ ...e, sets: nextSets }))
@@ -389,7 +505,7 @@ export function WorkoutLogger({
         ...e,
         sets: [
           ...e.sets,
-          { reps: last.reps, weight: last.weight, toFailure: false, done: false, touchedWeight: false },
+          { reps: last.reps, weight: last.weight, toFailure: false, percent: last.percent, auto: last.auto, done: false, touchedWeight: false },
         ],
         rests: [...e.rests.slice(0, -1), e.rests[e.rests.length - 2] ?? 90, 0].slice(0, e.sets.length + 1),
       }
@@ -436,9 +552,92 @@ export function WorkoutLogger({
     stopRest()
     setEditing(null)
     setSheet(null)
-    const next = exs.findIndex((e, n) => n > from && e.status === 'active')
+    // Next unfinished exercise after this one; if none, come back to any skipped-over earlier one.
+    let next = exs.findIndex((e, n) => n > from && e.status === 'active')
+    if (next === -1) next = exs.findIndex((e, n) => n !== from && e.status === 'active')
     setIdx(next)
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // Jump straight to an exercise from the program viewer. Nothing is lost: sets already
+  // logged stay logged, and the exercise you left stays open to come back to.
+  function jumpTo(n: number) {
+    stopRest()
+    setEditing(null)
+    setSheet(null)
+    setIdx(n)
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openProgram() {
+    setViewDayId(program?.currentDayId ?? null)
+    setSheet('program')
+  }
+
+  // ---- Maxes (percent of max -> weight) ----
+  // Every lift a percent in this program is "of", with how many days use it.
+  function neededLifts(): { key: string; name: string; days: number }[] {
+    const days = program?.days ?? (day ? [day] : [])
+    const found = new Map<string, { key: string; name: string; days: number }>()
+    for (const d of days) {
+      const seen = new Set<string>()
+      for (const pe of d.exercises) {
+        if (!hasPercent(parseSetGoals(pe.target_reps, pe.target_sets))) continue
+        const name = maxBasis(pe.exercise_name, pe.notes)
+        const key = name.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        const row = found.get(key)
+        if (row) row.days += 1
+        else found.set(key, { key, name, days: 1 })
+      }
+    }
+    return [...found.values()]
+  }
+
+  function openMaxes() {
+    const draft: Record<string, string> = {}
+    for (const l of neededLifts()) draft[l.key] = maxes[l.key] ? String(maxes[l.key]) : ''
+    setMaxDraft(draft)
+    setEstFor(null)
+    setEstW('')
+    setEstR('')
+    setSheet('maxes')
+  }
+
+  async function saveMaxesNow() {
+    const lifts = neededLifts()
+    const entries = lifts
+      .map((l) => ({ name: l.name, key: l.key, oneRm: Number(maxDraft[l.key]) }))
+      .filter((e) => e.oneRm > 0)
+    if (entries.length === 0) {
+      setError('Enter at least one max.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const res = await saveMaxes(entries.map((e) => ({ name: e.name, oneRm: e.oneRm })))
+    setBusy(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setMaxes((prev) => {
+      const next = { ...prev }
+      for (const e of entries) next[e.key] = e.oneRm
+      return next
+    })
+    setSheet(null)
+    flash('Maxes saved')
+  }
+
+  function chooseStep(n: number) {
+    setStep(n)
+    try {
+      window.localStorage.setItem(STEP_PREF_KEY, String(n))
+    } catch {
+      /* storage unavailable */
+    }
   }
 
   async function submitEffort(effort: number | null) {
@@ -499,7 +698,7 @@ export function WorkoutLogger({
       ...e,
       name: newName,
       swappedFrom: e.swappedFrom ?? e.name,
-      sets: e.sets.map((s) => ({ ...s, done: false, touchedWeight: false, weight: '' })),
+      sets: e.sets.map((s) => ({ ...s, done: false, touchedWeight: false, auto: false, weight: '' })),
     }))
     setReplaceText('')
     setSheet(null)
@@ -638,6 +837,13 @@ export function WorkoutLogger({
   // --------------------------- Exercise screen -----------------------------
   const current = ex as ExState
   const ci = currentSetIndex(current)
+  // Percent-of-max plans ("2@85/2@85/1@90") show as "2x2 @85 then 1x2 @90" and get a badge per set.
+  const planGoals = parseSetGoals(current.plan.target_reps, current.plan.target_sets)
+  const planHasPercent = hasPercent(planGoals)
+  const planSegments = percentSegments(planGoals)
+  const basisName = maxBasis(current.plan.exercise_name, current.plan.notes)
+  const basisMax = current.swappedFrom ? undefined : maxes[basisName.toLowerCase()]
+  const parts = complexParts(current.name, current.plan.notes)
   const allDone = ci === -1
   const doneCount = current.sets.filter((s) => s.done).length
   const isLast = ci === current.sets.length - 1 && editing === null
@@ -671,7 +877,7 @@ export function WorkoutLogger({
               <span
                 key={e.key}
                 className={`h-1 flex-1 rounded-full ${
-                  n < idx || e.status !== 'active'
+                  e.status !== 'active'
                     ? 'bg-accent'
                     : n === idx
                       ? 'bg-ink'
@@ -680,6 +886,16 @@ export function WorkoutLogger({
               />
             ))}
           </div>
+          {program && (
+            <button
+              type="button"
+              aria-label="View the rest of your workout and program"
+              onClick={openProgram}
+              className="flex h-9 flex-none items-center gap-1 rounded-full border border-ink/30 bg-canvas/50 px-3 text-xs font-semibold text-ink"
+            >
+              &#9776; Program
+            </button>
+          )}
           <button
             type="button"
             aria-label="Exercise options"
@@ -707,10 +923,24 @@ export function WorkoutLogger({
 
       <div className="px-1">
         <p className="text-sm text-ink">
-          <span className="font-semibold">
-            {current.plan.target_sets ?? current.sets.length} sets
-            {current.plan.target_reps ? ` · ${current.plan.target_reps}` : ''}
-          </span>
+          {planHasPercent ? (
+            <span className="font-semibold">
+              {current.plan.target_sets ?? current.sets.length} sets &middot;{' '}
+              {planSegments.map((seg, k) => (
+                <span key={k}>
+                  {k > 0 && <span className="font-normal text-muted"> then </span>}
+                  {seg.sets}x{seg.reps}
+                  {seg.toFailure ? 'F' : ''}
+                  {seg.percent && <span className="text-accent"> @{seg.percent}</span>}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="font-semibold">
+              {current.plan.target_sets ?? current.sets.length} sets
+              {current.plan.target_reps ? ` · ${current.plan.target_reps}` : ''}
+            </span>
+          )}
           <span className="text-muted">
             {' '}
             &middot; {doneCount} of {current.sets.length} logged
@@ -719,7 +949,47 @@ export function WorkoutLogger({
         {current.swappedFrom && (
           <p className="mt-0.5 text-xs text-accent">Swapped in for {current.swappedFrom}</p>
         )}
+        {planHasPercent && basisMax && (
+          <p className="mt-1 text-xs text-muted">
+            {basisName} 1RM <b className="text-accent">{basisMax} lb</b>
+            <button type="button" onClick={openMaxes} className="ml-2 font-semibold text-accent">
+              Edit max
+            </button>
+          </p>
+        )}
+        {parts && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {parts.map((part, k) => (
+              <span key={k} className="flex items-center gap-1.5">
+                {k > 0 && <span className="text-muted">+</span>}
+                <span className="rounded-full border border-line bg-glass px-2.5 py-0.5 text-xs text-ink">
+                  {part}
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
+
+      {planHasPercent && !basisMax && !current.swappedFrom && !maxPromptHidden && (
+        <div className="inset-card flex items-center gap-3 px-3 py-2.5 text-xs text-muted">
+          <p className="min-w-0 flex-1">
+            This uses percents. Add your <b className="text-ink">{basisName}</b> max and the app works out your
+            weights.
+          </p>
+          <button type="button" onClick={openMaxes} className="btn-accent-sm flex-none">
+            Set max
+          </button>
+          <button
+            type="button"
+            aria-label="Not now"
+            onClick={() => setMaxPromptHidden(true)}
+            className="flex-none text-muted"
+          >
+            &#10005;
+          </button>
+        </div>
+      )}
 
       {last && (
         <div className="inset-card px-3 py-2 text-xs text-muted">
@@ -744,10 +1014,19 @@ export function WorkoutLogger({
                 </span>
                 <div className="min-w-0 flex-1 rounded-card border-[1.5px] border-ink bg-glass p-3 ring-4 ring-ink/5">
                   <div className="mb-2 flex items-center justify-between px-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-ink">
+                    <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-ink">
                       {editing !== null
                         ? `Editing set ${i + 1}`
                         : `Set ${i + 1} of ${current.sets.length}`}
+                      {s.percent && <PercentBadge percent={s.percent} />}
+                      {(() => {
+                        const tw = targetWeight(basisMax, s.percent, step)
+                        return tw ? (
+                          <span className="font-semibold normal-case tracking-normal text-muted">
+                            Target {fmtTarget(tw)} lb
+                          </span>
+                        ) : null
+                      })()}
                     </p>
                     {s.toFailure ? (
                       <span className="rounded-full border border-accent px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent">
@@ -817,8 +1096,11 @@ export function WorkoutLogger({
                   onClick={() => setEditing(i)}
                   className="flex min-w-0 flex-1 items-center justify-between rounded-2xl border border-line bg-glass px-3 py-2.5 text-left"
                 >
-                  <span className="text-sm text-ink">
-                    <b className="italic">{s.reps}</b> reps &times; <b className="italic">{s.weight || 0}</b> lb
+                  <span className="flex items-center gap-2 text-sm text-ink">
+                    <span>
+                      <b className="italic">{s.reps}</b> reps &times; <b className="italic">{s.weight || 0}</b> lb
+                    </span>
+                    {s.percent && <PercentBadge percent={s.percent} />}
                   </span>
                   <span className="text-xs text-muted">Edit</span>
                 </button>
@@ -834,9 +1116,12 @@ export function WorkoutLogger({
                 {i + 1}
               </span>
               <div className="flex min-w-0 flex-1 items-center justify-between rounded-2xl border border-dashed border-line px-3 py-2.5 text-muted">
-                <span className="text-sm">
-                  <b className="italic">{s.reps || '-'}</b> reps &times;{' '}
-                  <b className="italic">{s.weight || '-'}</b> lb
+                <span className="flex items-center gap-2 text-sm">
+                  <span>
+                    <b className="italic">{s.reps || '-'}</b> reps &times;{' '}
+                    <b className="italic">{s.weight || '-'}</b> lb
+                  </span>
+                  {s.percent && <PercentBadge percent={s.percent} />}
                 </span>
                 <span className="text-[10px] uppercase tracking-wide">
                   {s.toFailure ? 'to failure' : 'up next'}
@@ -925,6 +1210,258 @@ export function WorkoutLogger({
           />
           <div className="absolute inset-x-0 bottom-0 mx-auto max-w-xl rounded-t-[1.75rem] border border-b-0 border-line bg-surface px-5 pb-8 pt-3">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+
+            {sheet === 'program' && program && (() => {
+              const viewing = program.days.find((d) => d.id === viewDayId) ?? program.days[0]
+              const isToday = viewing.id === program.currentDayId
+              const groups: string[] = []
+              for (const d of program.days) {
+                const g = splitDayLabel(d.day_label).group ?? ''
+                if (!groups.includes(g)) groups.push(g)
+              }
+              const viewGroup = splitDayLabel(viewing.day_label).group ?? ''
+              const groupDays = program.days.filter(
+                (d) => (splitDayLabel(d.day_label).group ?? '') === viewGroup
+              )
+              const todayGroup =
+                splitDayLabel(program.days.find((d) => d.id === program.currentDayId)?.day_label ?? '').group ?? ''
+              return (
+                <div className="max-h-[75vh] overflow-y-auto">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-semibold text-ink">{program.name}</h2>
+                      <p className="mb-2 text-xs text-muted">
+                        Week {program.week} of {program.totalWeeks} &middot; you are on{' '}
+                        {splitDayLabel(program.days.find((d) => d.id === program.currentDayId)?.day_label ?? '').short}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSheet(null)}
+                      className="btn-ghost-sm flex-none"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  {groups.length > 1 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {groups.map((g) => {
+                        const first = program.days.find((d) => (splitDayLabel(d.day_label).group ?? '') === g)
+                        const on = g === viewGroup
+                        return (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => first && setViewDayId(first.id)}
+                            className={`rounded-full border px-3 py-1 text-xs ${
+                              on ? 'border-accent font-bold text-accent' : 'border-line bg-glass text-ink'
+                            }`}
+                          >
+                            {g || 'Days'}
+                            {g === todayGroup ? ' \u25cf' : ''}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {groupDays.map((d) => {
+                      const on = d.id === viewing.id
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setViewDayId(d.id)}
+                          className={`rounded-full border px-3 py-1 text-xs ${
+                            on ? 'border-accent font-bold text-accent' : 'border-line bg-glass text-ink'
+                          }`}
+                        >
+                          {splitDayLabel(d.day_label).short.match(/^Day\s*\d+/i)?.[0] ?? splitDayLabel(d.day_label).short}
+                          {d.id === program.currentDayId ? ' \u25cf' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <p className="mb-1 text-sm font-semibold text-ink">{splitDayLabel(viewing.day_label).short}</p>
+                  {!isToday && (
+                    <p className="mb-2 rounded-xl border border-line bg-glass px-3 py-2 text-xs text-muted">
+                      Preview only. This is not today&apos;s workout, so there are no Go buttons.
+                    </p>
+                  )}
+
+                  <div>
+                    {isToday
+                      ? exs.map((e, n) => (
+                          <div key={e.key} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
+                            <span
+                              className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border text-[11px] ${
+                                e.status === 'done'
+                                  ? 'border-transparent bg-accent text-canvas'
+                                  : n === idx
+                                    ? 'border-accent font-bold text-accent'
+                                    : 'border-line text-muted'
+                              }`}
+                            >
+                              {e.status === 'done' ? '\u2713' : n + 1}
+                            </span>
+                            <div className={`min-w-0 flex-1 ${e.status !== 'active' ? 'opacity-55' : ''}`}>
+                              <p className="truncate text-sm font-semibold text-ink">{e.name}</p>
+                              <p className="text-xs text-muted">
+                                <PlanLine sets={e.plan.target_sets} reps={e.plan.target_reps} />
+                              </p>
+                            </div>
+                            {n === idx ? (
+                              <span className="flex-none rounded-full border border-accent px-2.5 py-0.5 text-[11px] font-bold text-accent">
+                                Now
+                              </span>
+                            ) : e.status === 'active' ? (
+                              <button
+                                type="button"
+                                onClick={() => jumpTo(n)}
+                                className="flex-none rounded-full border border-accent px-3 py-1 text-xs font-bold text-accent"
+                              >
+                                Go &rsaquo;
+                              </button>
+                            ) : (
+                              <span className="flex-none text-[11px] uppercase tracking-wide text-muted">
+                                {e.status === 'skipped' ? 'Skipped' : 'Done'}
+                              </span>
+                            )}
+                          </div>
+                        ))
+                      : viewing.exercises.map((e, n) => (
+                          <div key={`${e.exercise_name}-${n}`} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
+                            <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full border border-line text-[11px] text-muted">
+                              {n + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-ink">{e.exercise_name}</p>
+                              <p className="text-xs text-muted">
+                                <PlanLine sets={e.target_sets} reps={e.target_reps} />
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {sheet === 'maxes' && (
+              <div className="max-h-[75vh] overflow-y-auto">
+                <h2 className="text-lg font-semibold text-ink">Your maxes</h2>
+                <p className="mb-2 text-xs text-muted">
+                  Enter your one-rep max in pounds for each lift. The app uses it to work out your weights from the
+                  percents. You can change it any time.
+                </p>
+                {neededLifts().map((l) => (
+                  <div key={l.key} className="border-t border-line py-3 first:border-t-0">
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink">{l.name}</p>
+                        <p className="text-xs text-muted">
+                          used on {l.days} {l.days === 1 ? 'day' : 'days'}
+                        </p>
+                      </div>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="--"
+                        value={maxDraft[l.key] ?? ''}
+                        onChange={(e) => setMaxDraft((d) => ({ ...d, [l.key]: e.target.value }))}
+                        aria-label={`${l.name} max in pounds`}
+                        className={`input-field w-24 text-center ${NO_SPINNER}`}
+                      />
+                      <span className="text-xs text-muted">lb</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEstFor(estFor === l.key ? null : l.key)
+                        setEstW('')
+                        setEstR('')
+                      }}
+                      className="mt-1 text-xs font-semibold text-accent"
+                    >
+                      {estFor === l.key ? 'Hide estimate' : 'Not sure? Estimate it'}
+                    </button>
+                    {estFor === l.key && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <span>A recent hard set:</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="lb"
+                          value={estW}
+                          onChange={(e) => setEstW(e.target.value)}
+                          aria-label="Weight lifted"
+                          className={`input-field w-20 text-center ${NO_SPINNER}`}
+                        />
+                        <span>&times;</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="reps"
+                          value={estR}
+                          onChange={(e) => setEstR(e.target.value)}
+                          aria-label="Reps"
+                          className={`input-field w-16 text-center ${NO_SPINNER}`}
+                        />
+                        {estimateMax(Number(estW), Number(estR)) > 0 && (
+                          <>
+                            <span>
+                              &asymp; <b className="text-ink">{estimateMax(Number(estW), Number(estR))} lb</b>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMaxDraft((d) => ({
+                                  ...d,
+                                  [l.key]: String(estimateMax(Number(estW), Number(estR))),
+                                }))
+                                setEstFor(null)
+                              }}
+                              className="btn-ghost-sm"
+                            >
+                              Use it
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div className="mt-2 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted">
+                  <span>Round weights to</span>
+                  {[5, 2.5, 1].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => chooseStep(n)}
+                      className={`rounded-full border px-3 py-1 ${
+                        step === n ? 'border-accent font-bold text-accent' : 'border-line bg-glass text-ink'
+                      }`}
+                    >
+                      {n} lb
+                    </button>
+                  ))}
+                </div>
+                {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+                <button type="button" onClick={saveMaxesNow} disabled={busy} className="btn-accent mt-3 w-full py-3">
+                  {busy ? 'Saving...' : 'Save maxes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSheet(null)}
+                  className="mt-2 w-full text-center text-xs text-muted"
+                >
+                  Skip for now (percents still show, without weights)
+                </button>
+              </div>
+            )}
 
             {sheet === 'menu' && (
               <div>
