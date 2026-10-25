@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { HelpTip } from '@/components/help-tip'
 import { enqueue, flush, pendingCount, readPending, resetLocal } from '@/lib/outbox'
 import { saveMaxes } from '@/app/actions/maxes'
 import {
@@ -942,14 +943,35 @@ export function WorkoutLogger({
           <span className="text-muted">
             {' '}
             &middot; {doneCount} of {current.sets.length} logged
-          </span>
+          </span>{' '}
+          <HelpTip title="Reading the plan">
+            <p>
+              <b className="text-ink">3 sets · 8</b> means do 3 sets of 8 reps. A range like 8-10 means anything in
+              that range is fine.
+            </p>
+            <p>
+              <b className="text-ink">F</b> means go to failure: keep going until you cannot do another good rep.
+            </p>
+            <p>
+              <b className="text-ink">@80%</b> means use 80% of your max for that lift. The app works out the weight
+              once you enter your max.
+            </p>
+            <p>Change the weight or reps to what you really did, then tap the big button to log the set.</p>
+          </HelpTip>
         </p>
         {current.swappedFrom && (
           <p className="mt-0.5 text-xs text-accent">Swapped in for {current.swappedFrom}</p>
         )}
         {planHasPercent && basisMax && (
           <p className="mt-1 text-xs text-muted">
-            {basisName} 1RM <b className="text-accent">{basisMax} lb</b>
+            {basisName} 1RM <b className="text-accent">{basisMax} lb</b>{' '}
+            <HelpTip title="What is a 1RM?">
+              <p>
+                Your one-rep max (1RM) is the heaviest weight you could lift for one good rep. Percents in your
+                program are a share of this number.
+              </p>
+              <p>Not sure of yours? Tap Edit max and use the estimate: enter a weight and reps you did recently.</p>
+            </HelpTip>
             <button type="button" onClick={openMaxes} className="ml-2 font-semibold text-accent">
               Edit max
             </button>
@@ -992,6 +1014,9 @@ export function WorkoutLogger({
       {last && (
         <div className="inset-card px-3 py-2 text-xs text-muted">
           <span className="mr-2 font-semibold uppercase tracking-wide text-accent">Last time</span>
+          <HelpTip title="Last time" className="mr-2">
+            <p>What you lifted the last time you did this exercise, as weight x reps. Try to match it or beat it a little.</p>
+          </HelpTip>
           {last.date ? `${last.date}: ` : ''}
           {last.sets.map(describe).join(' · ')}
         </div>
@@ -1160,6 +1185,10 @@ export function WorkoutLogger({
         {restEndsAt != null && (
           <div className="mx-auto mb-2 flex w-max items-center gap-3 rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-muted">
             <span>Rest</span>
+            <HelpTip title="Rest timer">
+              <p>A countdown between sets so you recover before the next one. Tap Skip to end it early.</p>
+              <p>Turn it off any time from the ... menu at the top of the screen.</p>
+            </HelpTip>
             <b className="tabular-nums text-ink">{fmtClock(restLeft)}</b>
             <button type="button" onClick={stopRest} className="font-semibold text-accent">
               Skip
@@ -1350,7 +1379,13 @@ export function WorkoutLogger({
 
             {sheet === 'maxes' && (
               <div className="max-h-[75vh] overflow-y-auto">
-                <h2 className="text-lg font-semibold text-ink">Your maxes</h2>
+                <h2 className="text-lg font-semibold text-ink">
+                  Your maxes{' '}
+                  <HelpTip title="Where do I get my max?">
+                    <p>Use the heaviest weight you can lift for one clean rep, or tap the estimate link and enter a recent set.</p>
+                    <p>A guess is fine to start. You can change it any time and your weights update.</p>
+                  </HelpTip>
+                </h2>
                 <p className="mb-2 text-xs text-muted">
                   Enter your one-rep max in pounds for each lift. The app uses it to work out your weights from the
                   percents. You can change it any time.
@@ -1567,7 +1602,16 @@ export function WorkoutLogger({
             {sheet === 'effort' && (
               <div>
                 <h2 className="text-lg font-semibold text-ink">{current.name} done</h2>
-                <p className="mb-3 text-xs text-muted">How did it feel?</p>
+                <p className="mb-3 text-xs text-muted">
+                  How did it feel?{' '}
+                  <HelpTip title="Why rate it?">
+                    <p>
+                      1 is very easy and 5 is max effort. Your rating helps adjust your training and shows how the
+                      program is working for you.
+                    </p>
+                    <p>You can skip it, but it takes one tap.</p>
+                  </HelpTip>
+                </p>
                 <div className="grid grid-cols-5 gap-2">
                   {EFFORT_LABELS.map((label, n) => {
                     const value = n + 1
