@@ -407,6 +407,14 @@ export function WorkoutLogger({
     messageTimer.current = setTimeout(() => setMessage(null), 2200)
   }
 
+  // The page scrolls inside the main area (the top and bottom bars stay put).
+  function scrollToTop() {
+    if (typeof document !== 'undefined') {
+      document.querySelector('[data-scroll-area]')?.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   const stopRest = useCallback(() => setRestEndsAt(null), [])
 
   function updateEx(i: number, patch: (e: ExState) => ExState) {
@@ -544,6 +552,15 @@ export function WorkoutLogger({
     return true
   }
 
+  function moveTo(n: number) {
+    if (n < 0 || n >= exs.length) return
+    stopRest()
+    setEditing(null)
+    setSheet(null)
+    setIdx(n)
+    scrollToTop()
+  }
+
   function goToNext(from: number) {
     stopRest()
     setEditing(null)
@@ -552,7 +569,7 @@ export function WorkoutLogger({
     let next = exs.findIndex((e, n) => n > from && e.status === 'active')
     if (next === -1) next = exs.findIndex((e, n) => n !== from && e.status === 'active')
     setIdx(next)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToTop()
   }
 
   // Jump straight to an exercise from the program viewer. Nothing is lost: sets already
@@ -562,7 +579,7 @@ export function WorkoutLogger({
     setEditing(null)
     setSheet(null)
     setIdx(n)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToTop()
   }
 
   function openProgram() {
@@ -861,13 +878,13 @@ export function WorkoutLogger({
 
   return (
     <div className="space-y-4">
-      {/* Picture slot + progress + menu */}
-      <div className="relative h-48 overflow-hidden rounded-card border border-line bg-linear-to-br from-accent/30 via-surface to-canvas">
-        <div className="absolute inset-x-3 top-3 z-10 flex items-center gap-2">
+      {/* Progress + menu, then the exercise name with arrows */}
+      <div>
+        <div className="flex items-center gap-2">
           <Link
             href="/dashboard"
             aria-label="Leave workout (your logged sets are saved)"
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-ink/30 bg-canvas/50 text-ink"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line bg-glass text-ink"
           >
             &#10005;
           </Link>
@@ -876,11 +893,7 @@ export function WorkoutLogger({
               <span
                 key={e.key}
                 className={`h-1 flex-1 rounded-full ${
-                  e.status !== 'active'
-                    ? 'bg-accent'
-                    : n === idx
-                      ? 'bg-ink'
-                      : 'bg-ink/20'
+                  e.status !== 'active' ? 'bg-accent' : n === idx ? 'bg-ink' : 'bg-ink/20'
                 }`}
               />
             ))}
@@ -890,7 +903,7 @@ export function WorkoutLogger({
               type="button"
               aria-label="View the rest of your workout and program"
               onClick={openProgram}
-              className="flex h-9 flex-none items-center gap-1 rounded-full border border-ink/30 bg-canvas/50 px-3 text-xs font-semibold text-ink"
+              className="flex h-9 flex-none items-center gap-1 rounded-full border border-line bg-glass px-3 text-xs font-semibold text-ink"
             >
               &#9776; Program
             </button>
@@ -899,24 +912,37 @@ export function WorkoutLogger({
             type="button"
             aria-label="Exercise options"
             onClick={() => setSheet('menu')}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-ink/30 bg-canvas/50 text-lg text-ink"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line bg-glass text-lg text-ink"
           >
             &#8943;
           </button>
         </div>
 
-        {/* Exercise photo or video goes in this circle later */}
-        <div className="absolute left-1/2 top-[42%] flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-dashed border-ink/40 text-center text-[9px] leading-tight text-ink/60">
-          exercise
-          <br />
-          photo
-        </div>
-
-        <div className="absolute inset-x-4 bottom-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
-            Exercise {idx + 1} of {exs.length}
-          </p>
-          <h1 className="text-2xl font-bold italic leading-tight text-ink">{current.name}</h1>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            aria-label="Previous exercise"
+            disabled={idx <= 0}
+            onClick={() => moveTo(idx - 1)}
+            className="flex h-11 w-11 flex-none items-center justify-center text-3xl text-muted disabled:opacity-25"
+          >
+            &lsaquo;
+          </button>
+          <div className="min-w-0 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
+              Exercise {idx + 1} of {exs.length}
+            </p>
+            <h1 className="text-xl font-bold italic leading-tight text-ink">{current.name}</h1>
+          </div>
+          <button
+            type="button"
+            aria-label="Next exercise"
+            disabled={idx >= exs.length - 1}
+            onClick={() => moveTo(idx + 1)}
+            className="flex h-11 w-11 flex-none items-center justify-center text-3xl text-muted disabled:opacity-25"
+          >
+            &rsaquo;
+          </button>
         </div>
       </div>
 
@@ -1036,8 +1062,8 @@ export function WorkoutLogger({
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1 rounded-card border-[1.5px] border-ink bg-glass p-3 ring-4 ring-ink/5">
-                  <div className="mb-2 flex items-center justify-between px-1">
-                    <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-ink">
+                  <div className="mb-2 px-1">
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold uppercase tracking-wide text-ink">
                       {editing !== null
                         ? `Editing set ${i + 1}`
                         : `Set ${i + 1} of ${current.sets.length}`}
@@ -1052,11 +1078,11 @@ export function WorkoutLogger({
                       })()}
                     </p>
                     {s.toFailure ? (
-                      <span className="rounded-full border border-accent px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent">
+                      <span className="mt-1 inline-block rounded-full border border-accent px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent">
                         To failure
                       </span>
                     ) : (
-                      <p className="text-xs text-muted">
+                      <p className="mt-1 text-xs text-muted">
                         {rest > 0 ? `Rest ${rest} sec after` : 'No rest after'}
                       </p>
                     )}
@@ -1101,6 +1127,29 @@ export function WorkoutLogger({
                       </div>
                     </div>
                   ))}
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void logSet()}
+                    className="btn-accent mt-3 w-full py-4 text-base"
+                  >
+                    {busy ? 'Saving...' : buttonLabel}
+                  </button>
+
+                  {restEndsAt != null && (
+                    <div className="mt-3 flex items-center justify-center gap-3 text-sm text-muted">
+                      <span>Rest</span>
+                      <HelpTip title="Rest timer">
+                        <p>A countdown between sets so you recover before the next one. Tap Skip to end it early.</p>
+                        <p>Turn it off any time from the ... menu at the top of the screen.</p>
+                      </HelpTip>
+                      <b className="tabular-nums text-ink">{fmtClock(restLeft)}</b>
+                      <button type="button" onClick={stopRest} className="font-semibold text-accent">
+                        Skip
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -1180,39 +1229,21 @@ export function WorkoutLogger({
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      {/* Rest timer + the one big button */}
-      <div className="sticky bottom-24 z-10 -mx-1 bg-linear-to-t from-canvas via-canvas/90 to-transparent px-1 pb-1 pt-6">
-        {restEndsAt != null && (
-          <div className="mx-auto mb-2 flex w-max items-center gap-3 rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-muted">
-            <span>Rest</span>
-            <HelpTip title="Rest timer">
-              <p>A countdown between sets so you recover before the next one. Tap Skip to end it early.</p>
-              <p>Turn it off any time from the ... menu at the top of the screen.</p>
-            </HelpTip>
-            <b className="tabular-nums text-ink">{fmtClock(restLeft)}</b>
-            <button type="button" onClick={stopRest} className="font-semibold text-accent">
-              Skip
-            </button>
-          </div>
-        )}
+      {allDone && (
         <button
           type="button"
           disabled={busy}
           onClick={() => {
-            if (allDone) {
-              setPickedEffort(current.effort)
-              setNoteText(current.note)
-              setNoteOpen(Boolean(current.note))
-              setSheet('effort')
-            } else {
-              void logSet()
-            }
+            setPickedEffort(current.effort)
+            setNoteText(current.note)
+            setNoteOpen(Boolean(current.note))
+            setSheet('effort')
           }}
           className="btn-accent w-full py-4 text-base"
         >
           {busy ? 'Saving...' : buttonLabel}
         </button>
-      </div>
+      )}
 
       {/* Toast */}
       {message && (

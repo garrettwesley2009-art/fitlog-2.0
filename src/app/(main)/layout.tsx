@@ -23,13 +23,15 @@ export default async function MainLayout({
     'Account'
 
   return (
-    <div className="min-h-screen bg-canvas bg-glow text-ink">
+    <div className="flex h-dvh flex-col overflow-hidden bg-canvas bg-glow text-ink">
       <NavBar displayName={displayName} />
       <Heartbeat />
       <SyncRunner />
       <OnboardingGate />
       {/* pb-28 leaves room so the bottom bar never covers the end of a page */}
-      <main className="mx-auto max-w-5xl px-4 pb-28 pt-6">{children}</main>
+      <div data-scroll-area className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <main className="mx-auto max-w-5xl px-4 pb-28 pt-6">{children}</main>
+      </div>
     </div>
   )
 }
