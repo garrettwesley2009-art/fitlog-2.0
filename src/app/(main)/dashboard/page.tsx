@@ -1,3 +1,4 @@
+import { ProfileProgressCard } from '@/components/profile-progress-card'
 import { HelpTip } from '@/components/help-tip'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -9,8 +10,7 @@ import { VolumeBars } from '@/components/volume-bars'
 import {
   BadgesPlaceholder,
   GoalPlaceholder,
-  QuestPlaceholder,
-} from '@/components/home-placeholders'
+  } from '@/components/home-placeholders'
 
 function firstName(displayName: string | undefined, email: string | undefined) {
   const raw = displayName?.trim() || email?.split('@')[0] || 'there'
@@ -271,7 +271,7 @@ export default async function HomePage() {
       {/* Not built yet: shown dimmed so the layout is complete */}
       <BadgesPlaceholder />
       <GoalPlaceholder />
-      <QuestPlaceholder />
+      <ProfileProgressCard />
     </div>
   )
 }

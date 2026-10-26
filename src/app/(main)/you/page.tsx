@@ -1,3 +1,4 @@
+import { ProfileEditor } from '@/components/profile-editor'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
@@ -22,12 +23,7 @@ export default async function ProfilePage() {
         {user.email && <p className="mt-1 text-sm text-muted">{user.email}</p>}
       </div>
 
-      <div className="glass-card p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-accent">Coming soon</p>
-        <p className="mt-1 text-sm text-muted">
-          A few quick questions about you and your goals, so your coaching can be more accurate.
-        </p>
-      </div>
+      <ProfileEditor />
 
       {isAdmin === true && (
         <Link href="/admin" className="glass-card flex items-center justify-between p-5">

@@ -124,6 +124,7 @@ export function NavBar({ displayName }: { displayName: string }) {
               <li key={s.id} className="flex-1">
                 <Link
                   href={s.href}
+                  data-tour={`nav-${s.id}`}
                   aria-current={active ? 'page' : undefined}
                   className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
                     active ? 'text-ink' : 'text-muted hover:text-ink'

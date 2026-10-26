@@ -4,6 +4,7 @@ import { NavBar } from '@/components/nav-bar'
 import { Heartbeat } from '@/components/heartbeat'
 import { SyncRunner } from '@/components/sync-runner'
 import { OnboardingGate } from '@/components/onboarding-gate'
+import { AppTour } from '@/components/app-tour'
 
 export default async function MainLayout({
   children,
@@ -28,6 +29,7 @@ export default async function MainLayout({
       <Heartbeat />
       <SyncRunner />
       <OnboardingGate />
+      <AppTour />
       {/* pb-28 leaves room so the bottom bar never covers the end of a page */}
       <div data-scroll-area className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <main className="mx-auto max-w-5xl px-4 pb-28 pt-6">{children}</main>

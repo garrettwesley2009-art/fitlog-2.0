@@ -49,14 +49,14 @@ export function Welcome({
   const onForm = step === SLIDES.length
   const slide = SLIDES[step]
 
-  function leave() {
-    router.push('/dashboard')
+  function leave(tour = false) {
+    router.push(tour ? '/dashboard?tour=1' : '/dashboard')
     router.refresh()
   }
 
   function nextFromSlides() {
     if (step < SLIDES.length - 1) setStep(step + 1)
-    else if (replay) leave()
+    else if (replay) leave(true)
     else setStep(SLIDES.length)
   }
 
@@ -73,7 +73,7 @@ export function Welcome({
       setError(res.error)
       return
     }
-    leave()
+    leave(true)
   }
 
   async function skipSetup() {
@@ -95,7 +95,7 @@ export function Welcome({
         {!onForm && (
           <button
             type="button"
-            onClick={() => (replay ? leave() : setStep(SLIDES.length))}
+            onClick={() => (replay ? leave(true) : setStep(SLIDES.length))}
             className="text-sm text-muted"
           >
             Skip
