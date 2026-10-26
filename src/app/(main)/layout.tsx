@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NavBar } from '@/components/nav-bar'
 import { Heartbeat } from '@/components/heartbeat'
 import { SyncRunner } from '@/components/sync-runner'
+import { OnboardingGate } from '@/components/onboarding-gate'
 
 export default async function MainLayout({
   children,
@@ -26,6 +27,7 @@ export default async function MainLayout({
       <NavBar displayName={displayName} />
       <Heartbeat />
       <SyncRunner />
+      <OnboardingGate />
       {/* pb-28 leaves room so the bottom bar never covers the end of a page */}
       <main className="mx-auto max-w-5xl px-4 pb-28 pt-6">{children}</main>
     </div>

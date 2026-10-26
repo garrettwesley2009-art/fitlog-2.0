@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { logout } from '@/app/actions/auth'
@@ -38,6 +39,12 @@ export default async function ProfilePage() {
           <span className="text-muted">&rsaquo;</span>
         </Link>
       )}
+
+      <Link href="/welcome?replay=1" className="btn-ghost block text-center">
+
+        Replay the app tour
+
+      </Link>
 
       <form action={logout}>
         <button className="btn-ghost">Log out</button>
