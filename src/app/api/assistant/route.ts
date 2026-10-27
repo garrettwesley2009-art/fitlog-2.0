@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { anthropic, ASSISTANT_MODEL } from '@/lib/anthropic'
 import { COACH_GUIDELINES } from '@/lib/coach-guidelines'
 import type { ProgramDraft } from '@/lib/types'
+import { fromRow, profileSummary } from '@/lib/profile-progress'
 
 // Room for a full multi-day program. The old limit (1500) cut long programs off
 // in the middle of the JSON, which made the coach look like it "only outputs text".
@@ -116,15 +117,12 @@ function normalizeDraft(input: unknown): ProgramDraft | null {
 // Turns whatever columns the profiles table has into short lines for the model.
 // Works today (display name only) and picks up weight, age, goals, etc. automatically
 // once the profile and onboarding columns exist. Nothing here needs to change then.
-const SKIP_PROFILE_KEYS = new Set(['id', 'created_at', 'updated_at', 'onboarded_at', 'email'])
 
 function profileNote(profile: Record<string, unknown> | null): string {
-  if (!profile) return 'No profile information is saved for this person yet.'
-  const lines = Object.entries(profile)
-    .filter(([key, value]) => !SKIP_PROFILE_KEYS.has(key) && value !== null && value !== '' && value !== undefined)
-    .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
-  if (lines.length === 0) return 'No profile information is saved for this person yet.'
-  return `Saved profile (units are as stored; ask if unclear):\n${lines.join('\n')}`
+  const none = 'No profile information is saved for this person yet.'
+  if (!profile) return none
+  const summary = profileSummary(fromRow(profile))
+  return summary ? `Saved profile (private, from the You page):\n${summary}` : none
 }
 
 export async function POST(request: Request) {
