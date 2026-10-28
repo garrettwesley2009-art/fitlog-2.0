@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ProgramDraft } from '@/lib/types'
+import { CoachSetupCard } from '@/components/coach-setup-card'
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
@@ -13,14 +14,21 @@ const STARTERS = [
   'I play baseball and want more power',
 ]
 
+// True when the person is asking the Coach to make them a new program.
+function isBuildRequest(text: string) {
+  return /\b(build|create|make|design|write|new)\b.*\b(program|workout|plan|routine|split)\b/i.test(text)
+}
+
 function DraftCard({
   draft,
   saving,
   onSave,
+  onTweak,
 }: {
   draft: ProgramDraft
   saving: boolean
   onSave: () => void
+  onTweak: () => void
 }) {
   const [open, setOpen] = useState(true)
   const weeks = draft.total_weeks ?? 8
@@ -63,7 +71,9 @@ function DraftCard({
         <button type="button" onClick={onSave} disabled={saving} className="btn-accent">
           {saving ? 'Saving...' : 'Save to my programs'}
         </button>
-        <p className="text-xs text-muted">Want a change first? Just tell the coach.</p>
+        <button type="button" onClick={onTweak} className="btn-ghost-sm">
+          Tweak it
+        </button>
       </div>
     </div>
   )
@@ -79,6 +89,8 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
   const [savedName, setSavedName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [showSetup, setShowSetup] = useState(false)
 
   useEffect(() => {
     fetch('/api/assistant')
@@ -98,17 +110,31 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, pendingDraft, savedName, loading])
+  }, [messages, pendingDraft, savedName, loading, showSetup])
 
-  async function send(override?: string) {
+  async function send(override?: string, shown?: string) {
     const text = (override ?? input).trim()
     if (!text || loading) return
 
+    if (shown === undefined && isBuildRequest(text)) {
+      setError(null)
+      setSavedName(null)
+      setInput('')
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: text },
+        { role: 'assistant', content: 'Happy to. Fill in the card below, change anything that is off, then tap Build.' },
+      ])
+      setShowSetup(true)
+      return
+    }
+
     setError(null)
+    setShowSetup(false)
     setSavedName(null)
     setInput('')
     const history = messages
-    setMessages((prev) => [...prev, { role: 'user', content: text }])
+    setMessages((prev) => [...prev, { role: 'user', content: shown ?? text }])
     setLoading(true)
 
     try {
@@ -193,6 +219,10 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
             </div>
           ))}
 
+          {showSetup && (
+            <CoachSetupCard disabled={loading} onBuild={(m) => send(m, 'Build me a program (setup card)')} />
+          )}
+
           {loading && (
             <div className="flex justify-start">
               <div className="rounded-2xl bg-glass-hover px-3 py-2 text-sm text-muted">Coach is thinking...</div>
@@ -212,19 +242,31 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
           }}
         >
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Message your coach"
             className="input-field flex-1"
             aria-label="Message your coach"
           />
+          <button type="button" onClick={() => setShowSetup((v) => !v)} className="btn-ghost-sm shrink-0">
+            Guided setup
+          </button>
           <button type="submit" disabled={loading || !input.trim()} className="btn-accent">
             Send
           </button>
         </form>
       </div>
 
-      {pendingDraft && <DraftCard draft={pendingDraft} saving={saving} onSave={saveDraft} />}
+      {pendingDraft && <DraftCard
+          draft={pendingDraft}
+          saving={saving}
+          onSave={saveDraft}
+          onTweak={() => {
+            setInput('Change ')
+            inputRef.current?.focus()
+          }}
+        />}
 
       {savedName && (
         <div className="glass-card space-y-2 border border-accent p-4">
