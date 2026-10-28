@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram, getProgramPosition } from '@/lib/data'
@@ -22,7 +23,7 @@ function formatDay(date: string | null): string {
 
 export default async function LogPage() {
   const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData } = await getUserCached()
   const user = userData.user!
 
   const program = await getCurrentProgram(supabase, user.id)

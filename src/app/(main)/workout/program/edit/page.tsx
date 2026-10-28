@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram } from '@/lib/data'
@@ -8,7 +9,7 @@ import { BackButton } from '@/components/back-button'
 // workouts stay attached to your days.
 export default async function EditCurrentProgramPage() {
   const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData } = await getUserCached()
   const user = userData.user!
 
   const program = await getCurrentProgram(supabase, user.id)

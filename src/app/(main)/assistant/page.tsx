@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProgram } from '@/lib/data'
 import { AssistantChat } from '@/components/assistant-chat'
@@ -10,7 +11,7 @@ export default async function AssistantPage({
 }) {
   const { templateId } = await searchParams
   const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData } = await getUserCached()
   const user = userData.user!
 
   let programContext: unknown = null

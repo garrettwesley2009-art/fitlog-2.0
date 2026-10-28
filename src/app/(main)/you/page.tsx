@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { ProfileEditor } from '@/components/profile-editor'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -5,7 +6,7 @@ import { logout } from '@/app/actions/auth'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const { data } = await getUserCached()
   const user = data.user!
   const { data: isAdmin } = await supabase.rpc('is_admin')
 

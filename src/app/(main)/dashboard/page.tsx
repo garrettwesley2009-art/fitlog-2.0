@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { ProfileProgressCard } from '@/components/profile-progress-card'
 import { HelpTip } from '@/components/help-tip'
 import Link from 'next/link'
@@ -20,7 +21,7 @@ function firstName(displayName: string | undefined, email: string | undefined) {
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData } = await getUserCached()
   const user = userData.user!
 
   const name = firstName(

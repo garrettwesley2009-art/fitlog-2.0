@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NavBar } from '@/components/nav-bar'
@@ -12,7 +13,7 @@ export default async function MainLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const { data } = await getUserCached()
 
   if (!data.user) {
     redirect('/login')

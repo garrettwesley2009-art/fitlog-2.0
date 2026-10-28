@@ -1,8 +1,9 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function HistoryPage() {
   const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData } = await getUserCached()
   const user = userData.user!
 
   const { data: workouts } = await supabase

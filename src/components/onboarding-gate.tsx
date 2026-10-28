@@ -1,3 +1,4 @@
+import { getUserCached } from '@/lib/supabase/get-user'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
@@ -5,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 // If the database change has not been made yet, the query fails and nobody is sent anywhere.
 export async function OnboardingGate() {
   const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
+  const { data: userData } = await getUserCached()
   const user = userData.user
   if (!user) return null
 
