@@ -93,7 +93,7 @@ export function TemplateBrowser({ templates }: { templates: TemplateCard[] }) {
                   {t.categories.map((c) => (
                     <span
                       key={c}
-                      className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted"
+                      className="rounded-full border border-line-strong px-2 py-0.5 text-xs uppercase tracking-wide text-muted"
                     >
                       {categoryLabel(c)}
                     </span>

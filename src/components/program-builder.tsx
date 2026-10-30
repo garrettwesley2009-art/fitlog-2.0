@@ -278,7 +278,7 @@ export function ProgramBuilder({ initial, programId }: { initial?: ProgramDraft;
 
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="flex items-center justify-between rounded-xl border border-line px-3 py-1.5">
-                  <span className="text-[10px] uppercase tracking-wide text-muted">Sets</span>
+                  <span className="text-xs uppercase tracking-wide text-muted">Sets</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -309,7 +309,7 @@ export function ProgramBuilder({ initial, programId }: { initial?: ProgramDraft;
                 </div>
 
                 <div className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-1.5">
-                  <label htmlFor={`reps-${dayIndex}-${exIndex}`} className="text-[10px] uppercase tracking-wide text-muted">
+                  <label htmlFor={`reps-${dayIndex}-${exIndex}`} className="text-xs uppercase tracking-wide text-muted">
                     Reps
                   </label>
                   <input
@@ -394,7 +394,7 @@ export function ProgramBuilder({ initial, programId }: { initial?: ProgramDraft;
                   className="flex w-full items-center justify-between border-b border-line py-3.5 text-left text-accent"
                 >
                   <span>Add &ldquo;{typed}&rdquo;</span>
-                  <span className="text-[10px] uppercase tracking-wide text-muted">custom</span>
+                  <span className="text-xs uppercase tracking-wide text-muted">custom</span>
                 </button>
               )}
               {matches.map((n) => (

@@ -34,8 +34,8 @@ const STYLES: [string, string][] = [
   ['Conditioning mix', 'Lifting plus cardio and intervals'],
 ]
 
-const chip = (on: boolean) =>
-  `rounded-full border px-3 py-2 text-sm ${on ? 'border-accent bg-accent/20 text-ink' : 'border-line text-muted'}`
+// Selected chips are solid red; the rest have a clear outline (44px tall either way).
+const chip = (on: boolean) => (on ? 'chip chip-on' : 'chip')
 
 function StylePicker({
   current,
@@ -63,7 +63,7 @@ function StylePicker({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-ink">Pick a style</h2>
+          <h2 className="font-display text-2xl font-bold text-ink">Pick a style</h2>
           <button type="button" onClick={onClose} className="btn-ghost-sm">
             Close
           </button>
@@ -94,7 +94,7 @@ function StylePicker({
               type="button"
               onClick={() => onPick(n)}
               className={`block w-full rounded-2xl border px-4 py-3 text-left text-ink ${
-                current === n ? 'border-accent bg-accent/15' : 'border-line'
+                current === n ? 'border-accent bg-accent/15' : 'border-line-strong'
               }`}
             >
               {n}
@@ -160,12 +160,12 @@ export function CoachSetupCard({ onBuild, disabled }: { onBuild: (message: strin
   }
 
   const tag = (show: boolean) =>
-    show ? <span className="ml-2 text-[10px] normal-case tracking-normal text-accent">from your profile</span> : null
-  const label = 'text-xs font-medium uppercase tracking-wide text-muted'
+    show ? <span className="ml-2 text-xs font-semibold normal-case tracking-normal text-accent-text">from your profile</span> : null
+  const label = 'label-caps'
 
   return (
-    <div className="space-y-4 rounded-2xl border border-line p-4">
-      <p className="text-sm font-semibold text-ink">Set up your program</p>
+    <div className="card space-y-5 p-4">
+      <h2 className="font-display text-[26px] font-bold leading-tight text-ink">Program setup</h2>
 
       <div className="space-y-2">
         <p className={label}>Goal{tag(fromProfile.goal)}</p>
@@ -213,7 +213,7 @@ export function CoachSetupCard({ onBuild, disabled }: { onBuild: (message: strin
               {style}
             </button>
           )}
-          <button type="button" onClick={() => setPicker(true)} className="rounded-full border border-dashed border-line px-3 py-2 text-sm text-ink">
+          <button type="button" onClick={() => setPicker(true)} className="chip border-dashed">
             More styles...
           </button>
         </div>
@@ -247,14 +247,14 @@ export function CoachSetupCard({ onBuild, disabled }: { onBuild: (message: strin
       </div>
 
       {(equip.length > 0 || limits) && (
-        <p className="text-xs text-muted">
+        <p className="text-sm text-muted">
           The Coach also uses your profile
           {equip.length > 0 ? `: ${equip.join(', ')}` : ''}
           {limits ? `. Limits: ${limits}` : ''}
         </p>
       )}
 
-      <button type="button" onClick={build} disabled={!ready || disabled} className="btn-accent w-full">
+      <button type="button" onClick={build} disabled={!ready || disabled} className="btn-accent min-h-[52px] w-full text-[17px]">
         {ready ? 'Build my program' : 'Pick a goal and days to build'}
       </button>
 

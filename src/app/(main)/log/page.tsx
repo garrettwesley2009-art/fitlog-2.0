@@ -32,7 +32,7 @@ export default async function LogPage() {
   if (program && position?.finished) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold text-ink">Log a workout</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">Log a workout</h1>
         <p className="text-sm text-muted">
           You&apos;ve finished {program.name}.{' '}
           <Link href="/dashboard" className="text-ink underline">
@@ -90,6 +90,8 @@ export default async function LogPage() {
   // week or day that was, so it still works after skipped days.
   const lastTime: Record<string, LastTime> = {}
   const history: Record<string, LastTime[]> = {}
+  // Heaviest weight logged per exercise in those earlier workouts, so the logger can spot a new PR.
+  const bests: Record<string, number> = {}
 
   if (program && position && !position.finished) {
     const exerciseNameById = new Map<string, string>()
@@ -124,6 +126,10 @@ export default async function LogPage() {
 
         for (const [exerciseId, sets] of setsByExercise) {
           const name = exerciseNameById.get(exerciseId)!
+          for (const s of sets) {
+            const w = Number(s.weight) || 0
+            if (w > (bests[name] ?? 0)) bests[name] = w
+          }
           const entry: LastTime = {
             date: formatDay(w.date as string | null),
             sets: sets.sort((a, b) => a.set_index - b.set_index),
@@ -200,6 +206,7 @@ export default async function LogPage() {
     <WorkoutLogger
       program={programLite}
       maxes={maxes}
+      bests={bests}
       day={day}
       workoutLabel={workoutLabel}
       initialWorkoutId={initialWorkoutId}

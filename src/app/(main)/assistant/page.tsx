@@ -42,7 +42,7 @@ export default async function AssistantPage({
       {/* Only when the coach was opened from a template page. */}
       {templateId && <BackButton href={`/templates/${templateId}`} label="Template" />}
       <div>
-        <h1 className="text-2xl font-semibold text-ink">AI assistant</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">AI assistant</h1>
         <p className="mt-1 text-sm text-muted">
           {templateId
             ? 'Ask it to tweak this template before you start it.'

@@ -14,7 +14,7 @@ export default async function MyProgramPage() {
   if (!program) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-ink">My program</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">My program</h1>
         <div className="glass-card p-6 text-center">
           <p className="text-ink">You don&apos;t have a program yet.</p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
@@ -46,23 +46,35 @@ export default async function MyProgramPage() {
     ])
   )
 
+  const percent = position.totalDays > 0 ? Math.round((position.doneCount / position.totalDays) * 100) : 0
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-accent">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">
           {position.finished
             ? 'Program complete'
             : `Week ${position.week} of ${position.totalWeeks}`}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold text-ink">{program.name}</h1>
-        <p className="mt-1 text-sm text-muted">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="min-w-0 break-words font-display text-[34px] font-extrabold leading-none text-ink">{program.name}</h1>
+          <Link href="/workout/program/edit" className="btn-ghost-sm flex-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 20h4L19 9l-4-4L4 16z" />
+            </svg>
+            Edit
+          </Link>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-inset">
+          <div className="h-2 rounded-full bg-accent" style={{ width: `${percent}%` }} />
+        </div>
+        <p className="mt-1.5 text-sm text-muted tabular">
           {position.doneCount} of {position.totalDays} days finished{' '}<HelpTip title="How programs work"><p>A program is a set number of weeks. Each week you do every day in order, then the program moves to the next week.</p><p>Days are not tied to the calendar. Do them whenever suits you. Tap Skip on Home if you have to miss one.</p></HelpTip>
         </p>
-        <Link href="/workout/program/edit" className="btn-ghost mt-3 inline-flex">Edit program</Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {program.days.map((day) => {
+        {program.days.map((day, i) => {
           const isToday = !position.finished && position.day.id === day.id
           const status = statusByDay.get(day.id)
           const label = isToday
@@ -74,40 +86,56 @@ export default async function MyProgramPage() {
                 : 'Upcoming'
 
           return (
-            <div key={day.id} className="glass-card p-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="font-medium text-ink">{day.day_label}</p>
-                <p
-                  className={`text-xs font-medium uppercase tracking-wide ${
-                    isToday ? 'text-accent' : 'text-muted'
-                  }`}
-                >
+            <section key={day.id} className={`rounded-card border bg-surface p-4 ${isToday ? 'border-accent' : 'border-line'}`}>
+              <div className="flex items-center gap-3">
+                {status === 'done' ? (
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-success text-on-success">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  </span>
+                ) : (
+                  <span
+                    className={`flex h-8 w-8 flex-none items-center justify-center rounded-full font-display font-bold ${
+                      isToday ? 'border-2 border-accent text-ink' : 'border border-line-strong text-muted'
+                    }`}
+                  >
+                    {status === 'skipped' ? '–' : i + 1}
+                  </span>
+                )}
+                <h2 className="min-w-0 flex-1 font-display text-xl font-bold leading-tight text-ink">{day.day_label}</h2>
+                <p className={`flex-none text-xs font-semibold uppercase tracking-[0.08em] ${isToday ? 'text-accent-text' : 'text-muted'}`}>
                   {label}
                 </p>
               </div>
-              <ul className="mt-2 space-y-1 text-sm text-muted">
+              <ul className={`mt-2.5 ${isToday ? '' : 'text-muted'}`}>
                 {day.exercises.map((ex) => (
-                  <li key={ex.id}>
-                    {ex.exercise_name}
-                    {ex.target_sets && ex.target_reps
-                      ? ` - ${ex.target_sets}x${ex.target_reps}`
-                      : ''}
+                  <li key={ex.id} className="flex justify-between gap-3 border-t border-line py-2 text-[15px]">
+                    <span className="min-w-0">{ex.exercise_name}</span>
+                    {ex.target_sets && ex.target_reps && (
+                      <span className="flex-none font-display text-lg font-bold tabular text-ink">
+                        {ex.target_sets} × {ex.target_reps}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
-            </div>
+              {isToday && (
+                <Link href="/log" className="btn-accent mt-2 w-full">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M7 4.5v15l13-7.5z" />
+                  </svg>
+                  Start {day.day_label}
+                </Link>
+              )}
+            </section>
           )
         })}
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Link href="/dashboard" className="btn-accent">
-          Go to today
-        </Link>
-        <Link href="/programs/new" className="btn-ghost">
-          Build a new program
-        </Link>
-      </div>
+      <Link href="/programs/new" className="flex min-h-11 items-center justify-center text-[15px] font-semibold text-accent-text">
+        Build a new program
+      </Link>
     </div>
   )
 }

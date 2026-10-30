@@ -59,7 +59,7 @@ export default async function EditTemplateCopyPage({
     <div className="space-y-6">
       <BackButton href={`/templates/${template.id}`} label="Template" />
       <div>
-        <h1 className="text-2xl font-semibold text-ink">Edit your copy of {template.name}</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">Edit your copy of {template.name}</h1>
         <p className="mt-1 text-sm text-muted">
           Change anything you like. Saving puts a copy in your programs. The original template stays the same.
         </p>

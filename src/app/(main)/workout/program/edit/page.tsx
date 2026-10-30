@@ -37,7 +37,7 @@ export default async function EditCurrentProgramPage() {
     <div className="space-y-6">
       <BackButton href="/workout/program" label="My Program" />
       <div>
-        <h1 className="text-2xl font-semibold text-ink">Edit your program</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">Edit your program</h1>
         <p className="mt-1 text-sm text-muted">
           Change exercises, sets, reps, notes, day names or the length. Your progress is kept. Days you have
           already trained can&apos;t be removed, and a day you add shows up in the weeks still ahead.

@@ -34,11 +34,11 @@ function DraftCard({
   const weeks = draft.total_weeks ?? 8
 
   return (
-    <div className="glass-card space-y-3 border border-accent p-4">
+    <div className="space-y-3 rounded-card border border-insight/60 bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-accent">New template draft</p>
-          <p className="mt-1 text-base font-semibold text-ink">{draft.name}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-insight">New program draft</p>
+          <p className="mt-1 font-display text-2xl font-bold leading-tight text-ink">{draft.name}</p>
           <p className="text-xs text-muted">
             {weeks} weeks &middot; {draft.days.length} training days per week
           </p>
@@ -210,8 +210,10 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm text-ink ${
-                  m.role === 'user' ? 'border border-accent bg-glass' : 'bg-glass-hover'
+                className={`max-w-[85%] whitespace-pre-wrap px-3.5 py-2.5 text-[15px] text-ink ${
+                  m.role === 'user'
+                    ? 'rounded-[18px_18px_4px_18px] bg-inset'
+                    : 'rounded-[4px_18px_18px_18px] border border-line bg-surface'
                 }`}
               >
                 {m.content}
@@ -225,7 +227,7 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
 
           {loading && (
             <div className="flex justify-start">
-              <div className="rounded-2xl bg-glass-hover px-3 py-2 text-sm text-muted">Coach is thinking...</div>
+              <div className="rounded-[4px_18px_18px_18px] border border-line bg-surface px-3.5 py-2.5 text-[15px] text-insight">Coach is thinking...</div>
             </div>
           )}
 
@@ -269,9 +271,9 @@ export function AssistantChat({ programContext }: { programContext?: unknown }) 
         />}
 
       {savedName && (
-        <div className="glass-card space-y-2 border border-accent p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-accent">New template saved</p>
-          <p className="text-base font-semibold text-ink">{savedName}</p>
+        <div className="space-y-2 rounded-card border border-success/60 bg-surface p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Program saved</p>
+          <p className="font-display text-2xl font-bold leading-tight text-ink">{savedName}</p>
           <p className="text-xs text-muted">It is in your programs now. You can keep chatting to build another one.</p>
           <button type="button" onClick={() => router.push('/dashboard')} className="btn-accent-sm">
             Go to Home

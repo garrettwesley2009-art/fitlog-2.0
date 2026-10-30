@@ -254,7 +254,7 @@ export function ProfileSetup({
                   <div className="text-5xl" aria-hidden="true">
                     &#127881;
                   </div>
-                  <h1 className="mt-3 text-2xl font-extrabold text-ink">You&apos;re all set</h1>
+                  <h1 className="mt-3 font-display text-[34px] font-extrabold text-ink">You&apos;re all set</h1>
                   <p className="mt-2 text-sm text-muted">
                     Here is your profile. You can change any of it later from the You page.
                   </p>
@@ -263,7 +263,7 @@ export function ProfileSetup({
               ) : (
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-wide text-accent">Question {step + 1}</p>
-                  <h1 className="mt-1 text-2xl font-extrabold leading-tight text-ink">{s.title}</h1>
+                  <h1 className="mt-1 font-display text-[34px] font-extrabold leading-none text-ink">{s.title}</h1>
                   <p className="mt-2 text-sm text-muted">{s.hint}</p>
 
                   {s.id === 'name' && (

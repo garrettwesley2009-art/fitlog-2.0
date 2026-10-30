@@ -85,7 +85,14 @@ type SetState = {
   auto: boolean // weight was filled in from a percent of the saved max
   done: boolean
   touchedWeight: boolean
+  // Logged in this session at a heavier weight than any earlier workout (shown in gold).
+  pr?: boolean
 }
+
+// What the gold "New PR" banner shows after a record set.
+type PrNote = { exercise: string; weight: number; reps: number; was: number }
+
+const RING = 2 * Math.PI * 52
 
 type ExState = {
   key: string
@@ -102,7 +109,6 @@ type ExState = {
 const EFFORT_LABELS = ['Very easy', 'Easy', 'Just right', 'Hard', 'Max effort']
 const REST_PREF_KEY = 'fitlog.restTimer'
 const STEP_PREF_KEY = 'fitlog.weightStep'
-const HEX = '[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]'
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
 function numStr(n: number | null | undefined) {
@@ -237,6 +243,7 @@ export function WorkoutLogger({
   initialFeedback,
   program = null,
   maxes: initialMaxes = {},
+  bests = {},
 }: {
   day: DayLite | null
   workoutLabel: string
@@ -248,6 +255,8 @@ export function WorkoutLogger({
   program?: ProgramLite | null
   // Saved one-rep maxes in lb, keyed by lowercase exercise name.
   maxes?: Record<string, number>
+  // Heaviest weight ever logged per exercise name in earlier workouts (for spotting a new PR).
+  bests?: Record<string, number>
 }) {
   const router = useRouter()
 
@@ -285,6 +294,8 @@ export function WorkoutLogger({
   const [restOn, setRestOn] = useState(true)
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null)
   const [restLeft, setRestLeft] = useState(0)
+  const [restTotal, setRestTotal] = useState(0)
+  const [prNote, setPrNote] = useState<PrNote | null>(null)
   const [busy, setBusy] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -411,11 +422,23 @@ export function WorkoutLogger({
   function scrollToTop() {
     if (typeof document !== 'undefined') {
       document.querySelector('[data-scroll-area]')?.scrollTo({ top: 0, behavior: 'smooth' })
+      document.getElementById('log-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
   const stopRest = useCallback(() => setRestEndsAt(null), [])
+
+  // Ends the rest early and clears the PR banner, ready for the next set.
+  function startNextSet() {
+    stopRest()
+    setPrNote(null)
+  }
+
+  function addRest(seconds: number) {
+    setRestEndsAt((t) => (t == null ? t : t + seconds * 1000))
+    setRestTotal((t) => t + seconds)
+  }
 
   function updateEx(i: number, patch: (e: ExState) => ExState) {
     setExs((prev) => prev.map((e, n) => (n === i ? patch(e) : e)))
@@ -470,8 +493,16 @@ export function WorkoutLogger({
     void flush()
     {
       const loggedWeight = set.weight
+      // A new PR: heavier than any earlier workout and than the other sets logged today.
+      const w = Number(set.weight) || 0
+      const before = Math.max(
+        bests[ex.name] ?? 0,
+        ...ex.sets.filter((s, n) => n !== ci && s.done).map((s) => Number(s.weight) || 0)
+      )
+      const isPr = !wasEditing && w > 0 && (bests[ex.name] ?? 0) > 0 && w > before
+      setPrNote(isPr ? { exercise: ex.name, weight: w, reps: Number(set.reps), was: before } : null)
       const nextSets = ex.sets.map((s, n) => {
-        if (n === ci) return { ...s, done: true, touchedWeight: true }
+        if (n === ci) return { ...s, done: true, touchedWeight: true, pr: isPr || (wasEditing && s.pr) }
         // The sets after this one follow the weight you actually used.
         if (!wasEditing && n > ci && !s.done && !s.touchedWeight && !s.auto) return { ...s, weight: loggedWeight }
         return s
@@ -494,8 +525,11 @@ export function WorkoutLogger({
       }
 
       const rest = restOn ? (ex.rests[ci] ?? 0) : 0
-      if (rest > 0) setRestEndsAt(Date.now() + rest * 1000)
-      else flash(`Set ${ci + 1} logged`)
+      if (rest > 0) {
+        setRestTotal(rest)
+        setRestLeft(rest)
+        setRestEndsAt(Date.now() + rest * 1000)
+      } else if (!isPr) flash(`Set ${ci + 1} logged`)
     }
   }
 
@@ -555,6 +589,7 @@ export function WorkoutLogger({
   function moveTo(n: number) {
     if (n < 0 || n >= exs.length) return
     stopRest()
+    setPrNote(null)
     setEditing(null)
     setSheet(null)
     setIdx(n)
@@ -563,6 +598,7 @@ export function WorkoutLogger({
 
   function goToNext(from: number) {
     stopRest()
+    setPrNote(null)
     setEditing(null)
     setSheet(null)
     // Next unfinished exercise after this one; if none, come back to any skipped-over earlier one.
@@ -576,6 +612,7 @@ export function WorkoutLogger({
   // logged stay logged, and the exercise you left stays open to come back to.
   function jumpTo(n: number) {
     stopRest()
+    setPrNote(null)
     setEditing(null)
     setSheet(null)
     setIdx(n)
@@ -755,9 +792,9 @@ export function WorkoutLogger({
   // -------------------------------------------------------------------------
   if (!day || exs.length === 0) {
     return (
-      <div className="glass-card space-y-3 p-6 text-center">
-        <p className="text-lg font-semibold text-ink">No workout to log yet</p>
-        <p className="text-sm text-muted">
+      <div className="card space-y-3 p-6 text-center">
+        <p className="font-display text-3xl font-extrabold uppercase text-ink">No workout yet</p>
+        <p className="text-[15px] text-muted">
           Pick a program and your first day will show up here, one exercise at a time.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
@@ -776,9 +813,11 @@ export function WorkoutLogger({
   if (summary) {
     let setsDone = 0
     let volume = 0
+    let prCount = 0
     const efforts: number[] = []
     for (const e of exs) {
       if (e.status === 'skipped') continue
+      if (e.sets.some((s) => s.done && s.pr)) prCount += 1
       for (const s of e.sets) {
         if (!s.done) continue
         setsDone += 1
@@ -793,13 +832,24 @@ export function WorkoutLogger({
     return (
       <div className="space-y-5">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-accent">{workoutLabel}</p>
-          <h1 className="mt-1 text-3xl font-bold italic leading-tight text-ink">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">{workoutLabel}</p>
+          <h1 className="mt-1 font-display text-5xl font-extrabold uppercase leading-[0.95] text-ink">
             Nice work.
             <br />
-            That is a wrap.
+            That&apos;s a wrap.
           </h1>
         </div>
+
+        {prCount > 0 && (
+          <div className="flex items-center gap-3 rounded-2xl bg-record px-4 py-3 text-on-record">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
+            </svg>
+            <p className="font-display text-2xl font-extrabold uppercase leading-none">
+              {prCount} new {prCount === 1 ? 'PR' : 'PRs'} today
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-2">
           {[
@@ -807,22 +857,27 @@ export function WorkoutLogger({
             { label: 'lb lifted', value: volume.toLocaleString('en-US') },
             { label: 'Avg effort', value: avg },
           ].map((s) => (
-            <div key={s.label} className="glass-card p-3 text-center">
-              <p className="text-2xl font-bold text-ink">{s.value}</p>
-              <p className="text-[10px] uppercase tracking-wide text-muted">{s.label}</p>
+            <div key={s.label} className="card p-3 text-center">
+              <p className="font-display text-3xl font-extrabold tabular text-ink">{s.value}</p>
+              <p className="label-caps">{s.label}</p>
             </div>
           ))}
         </div>
 
-        <div className="glass-card divide-y divide-line px-4">
+        <div className="card divide-y divide-line px-4">
           {exs.map((e) => (
-            <div key={e.key} className="flex items-center justify-between gap-3 py-3 text-sm">
+            <div key={e.key} className="flex min-h-12 items-center justify-between gap-3 py-2.5 text-[15px]">
               <span className="min-w-0 truncate text-ink">{e.name}</span>
               <span
-                className={`flex-none rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  e.status === 'skipped' ? 'bg-glass-hover text-muted' : 'bg-accent/25 text-ink'
+                className={`flex flex-none items-center gap-1 rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${
+                  e.status === 'skipped' ? 'border border-line-strong text-muted' : 'bg-success text-on-success'
                 }`}
               >
+                {e.status !== 'skipped' && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                )}
                 {e.status === 'skipped' ? 'Skipped' : e.effort ? `Effort ${e.effort}` : 'Logged'}
               </span>
             </div>
@@ -836,7 +891,7 @@ export function WorkoutLogger({
             type="button"
             onClick={handleFinish}
             disabled={finishing || setsDone === 0}
-            className="btn-accent w-full py-4 text-base"
+            className="flex h-16 w-full items-center justify-center rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
           >
             {finishing ? 'Finishing...' : 'Finish workout'}
           </button>
@@ -876,374 +931,449 @@ export function WorkoutLogger({
           ? `Log set ${ci + 1} and finish`
           : `Log set ${ci + 1}`
 
+  const resting = restEndsAt != null && editing === null && !allDone
+  const nextSet = ci >= 0 ? current.sets[ci] : null
+  const best = Math.max(
+    bests[current.name] ?? 0,
+    ...current.sets.filter((s) => s.done).map((s) => Number(s.weight) || 0)
+  )
+  const lastLine = last ? last.sets.map(describe).join(' · ') : null
+  const ringOffset = restTotal > 0 ? RING * (1 - Math.min(1, restLeft / restTotal)) : 0
+  const bigButton =
+    'flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50'
+
   return (
-    <div className="space-y-4">
-      {/* Progress + menu, then the exercise name with arrows */}
-      <div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            aria-label="Leave workout (your logged sets are saved)"
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line bg-glass text-ink"
-          >
-            &#10005;
-          </Link>
-          <div className="flex flex-1 gap-1" aria-hidden="true">
-            {exs.map((e, n) => (
-              <span
-                key={e.key}
-                className={`h-1 flex-1 rounded-full ${
-                  e.status !== 'active' ? 'bg-accent' : n === idx ? 'bg-ink' : 'bg-ink/20'
-                }`}
-              />
-            ))}
-          </div>
-          {program && (
-            <button
-              type="button"
-              aria-label="View the rest of your workout and program"
-              onClick={openProgram}
-              className="flex h-9 flex-none items-center gap-1 rounded-full border border-line bg-glass px-3 text-xs font-semibold text-ink"
-            >
-              &#9776; Program
-            </button>
-          )}
+    // Focus mode: while logging, the workout takes the whole screen (the app's bars are hidden
+    // underneath). The X at the top left leaves; every logged set is already saved.
+    <div className="fixed inset-0 z-50 flex flex-col bg-canvas pt-[env(safe-area-inset-top)] text-ink">
+      <div className="mx-auto flex h-14 w-full max-w-xl flex-none items-center gap-2 px-3">
+        <Link
+          href="/dashboard"
+          aria-label="Leave workout (your logged sets are saved)"
+          className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-line-strong text-ink"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </Link>
+        <p className="min-w-0 flex-1 truncate text-center text-[15px] font-semibold">{workoutLabel}</p>
+        {program && (
           <button
             type="button"
-            aria-label="Exercise options"
-            onClick={() => setSheet('menu')}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line bg-glass text-lg text-ink"
+            aria-label="View the rest of your workout and program"
+            onClick={openProgram}
+            className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-line-strong px-3 text-sm font-semibold text-ink"
           >
-            &#8943;
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h10" />
+            </svg>
+            Program
           </button>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            aria-label="Previous exercise"
-            disabled={idx <= 0}
-            onClick={() => moveTo(idx - 1)}
-            className="flex h-11 w-11 flex-none items-center justify-center text-3xl text-muted disabled:opacity-25"
-          >
-            &lsaquo;
-          </button>
-          <div className="min-w-0 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
-              Exercise {idx + 1} of {exs.length}
-            </p>
-            <h1 className="text-xl font-bold italic leading-tight text-ink">{current.name}</h1>
-          </div>
-          <button
-            type="button"
-            aria-label="Next exercise"
-            disabled={idx >= exs.length - 1}
-            onClick={() => moveTo(idx + 1)}
-            className="flex h-11 w-11 flex-none items-center justify-center text-3xl text-muted disabled:opacity-25"
-          >
-            &rsaquo;
-          </button>
-        </div>
-      </div>
-
-      <div className="px-1">
-        <p className="text-sm text-ink">
-          {planHasPercent ? (
-            <span className="font-semibold">
-              {current.plan.target_sets ?? current.sets.length} sets &middot;{' '}
-              {planSegments.map((seg, k) => (
-                <span key={k}>
-                  {k > 0 && <span className="font-normal text-muted"> then </span>}
-                  {seg.sets}x{seg.reps}
-                  {seg.toFailure ? 'F' : ''}
-                  {seg.percent && <span className="text-accent"> @{seg.percent}</span>}
-                </span>
-              ))}
-            </span>
-          ) : (
-            <span className="font-semibold">
-              {current.plan.target_sets ?? current.sets.length} sets
-              {current.plan.target_reps ? ` · ${current.plan.target_reps}` : ''}
-            </span>
-          )}
-          <span className="text-muted">
-            {' '}
-            &middot; {doneCount} of {current.sets.length} logged
-          </span>{' '}
-          <HelpTip title="Reading the plan">
-            <p>
-              <b className="text-ink">3 sets · 8</b> means do 3 sets of 8 reps. A range like 8-10 means anything in
-              that range is fine.
-            </p>
-            <p>
-              <b className="text-ink">F</b> means go to failure: keep going until you cannot do another good rep.
-            </p>
-            <p>
-              <b className="text-ink">@80%</b> means use 80% of your max for that lift. The app works out the weight
-              once you enter your max.
-            </p>
-            <p>Change the weight or reps to what you really did, then tap the big button to log the set.</p>
-          </HelpTip>
-        </p>
-        {current.swappedFrom && (
-          <p className="mt-0.5 text-xs text-accent">Swapped in for {current.swappedFrom}</p>
         )}
-        {planHasPercent && basisMax && (
-          <p className="mt-1 text-xs text-muted">
-            {basisName} 1RM <b className="text-accent">{basisMax} lb</b>{' '}
-            <HelpTip title="What is a 1RM?">
-              <p>
-                Your one-rep max (1RM) is the heaviest weight you could lift for one good rep. Percents in your
-                program are a share of this number.
-              </p>
-              <p>Not sure of yours? Tap Edit max and use the estimate: enter a weight and reps you did recently.</p>
-            </HelpTip>
-            <button type="button" onClick={openMaxes} className="ml-2 font-semibold text-accent">
-              Edit max
-            </button>
-          </p>
-        )}
-        {parts && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {parts.map((part, k) => (
-              <span key={k} className="flex items-center gap-1.5">
-                {k > 0 && <span className="text-muted">+</span>}
-                <span className="rounded-full border border-line bg-glass px-2.5 py-0.5 text-xs text-ink">
-                  {part}
-                </span>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {planHasPercent && !basisMax && !current.swappedFrom && !maxPromptHidden && (
-        <div className="inset-card flex items-center gap-3 px-3 py-2.5 text-xs text-muted">
-          <p className="min-w-0 flex-1">
-            This uses percents. Add your <b className="text-ink">{basisName}</b> max and the app works out your
-            weights.
-          </p>
-          <button type="button" onClick={openMaxes} className="btn-accent-sm flex-none">
-            Set max
-          </button>
-          <button
-            type="button"
-            aria-label="Not now"
-            onClick={() => setMaxPromptHidden(true)}
-            className="flex-none text-muted"
-          >
-            &#10005;
-          </button>
-        </div>
-      )}
-
-      {last && (
-        <div className="inset-card px-3 py-2 text-xs text-muted">
-          <span className="mr-2 font-semibold uppercase tracking-wide text-accent">Last time</span>
-          <HelpTip title="Last time" className="mr-2">
-            <p>What you lifted the last time you did this exercise, as weight x reps. Try to match it or beat it a little.</p>
-          </HelpTip>
-          {last.date ? `${last.date}: ` : ''}
-          {last.sets.map(describe).join(' · ')}
-        </div>
-      )}
-
-      {/* Sets: done above, current in focus, next ones previewed below */}
-      <div className="relative space-y-2.5 before:absolute before:bottom-6 before:left-[17px] before:top-6 before:w-0.5 before:bg-line">
-        {current.sets.map((s, i) => {
-          const isCurrent = i === ci
-          if (isCurrent) {
-            const rest = current.rests[i] ?? 0
-            return (
-              <div key={i} className="relative flex items-start gap-3">
-                <span
-                  className={`relative z-[1] -ml-[3px] mt-0.5 flex h-11 w-10 flex-none items-center justify-center bg-ink text-sm font-extrabold text-canvas ${HEX}`}
-                >
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1 rounded-card border-[1.5px] border-ink bg-glass p-3 ring-4 ring-ink/5">
-                  <div className="mb-2 px-1">
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold uppercase tracking-wide text-ink">
-                      {editing !== null
-                        ? `Editing set ${i + 1}`
-                        : `Set ${i + 1} of ${current.sets.length}`}
-                      {s.percent && <PercentBadge percent={s.percent} />}
-                      {(() => {
-                        const tw = targetWeight(basisMax, s.percent, step)
-                        return tw ? (
-                          <span className="font-semibold normal-case tracking-normal text-muted">
-                            Target {fmtTarget(tw)} lb
-                          </span>
-                        ) : null
-                      })()}
-                    </p>
-                    {s.toFailure ? (
-                      <span className="mt-1 inline-block rounded-full border border-accent px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent">
-                        To failure
-                      </span>
-                    ) : (
-                      <p className="mt-1 text-xs text-muted">
-                        {rest > 0 ? `Rest ${rest} sec after` : 'No rest after'}
-                      </p>
-                    )}
-                  </div>
-
-                  {(['reps', 'weight'] as const).map((field) => (
-                    <div
-                      key={field}
-                      className="mt-2 flex items-center justify-between rounded-2xl border border-line bg-canvas/40 py-1.5 pl-4 pr-2 first:mt-0"
-                    >
-                      <label
-                        htmlFor={`${field}-${i}`}
-                        className="text-[11px] uppercase tracking-wide text-muted"
-                      >
-                        {field === 'reps' ? 'Reps' : 'Weight (lb)'}
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          aria-label={`Less ${field}`}
-                          onClick={() => bump(i, field, field === 'reps' ? -1 : -5)}
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-glass-hover text-xl text-ink"
-                        >
-                          &minus;
-                        </button>
-                        <input
-                          id={`${field}-${i}`}
-                          type="number"
-                          inputMode={field === 'reps' ? 'numeric' : 'decimal'}
-                          value={s[field]}
-                          onChange={(e) => setField(i, field, e.target.value)}
-                          className={`w-[4.5rem] bg-transparent text-center text-3xl font-extrabold italic text-ink outline-none ${NO_SPINNER}`}
-                        />
-                        <button
-                          type="button"
-                          aria-label={`More ${field}`}
-                          onClick={() => bump(i, field, field === 'reps' ? 1 : 5)}
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-glass-hover text-xl text-ink"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void logSet()}
-                    className="btn-accent mt-3 w-full py-4 text-base"
-                  >
-                    {busy ? 'Saving...' : buttonLabel}
-                  </button>
-
-                  {restEndsAt != null && (
-                    <div className="mt-3 flex items-center justify-center gap-3 text-sm text-muted">
-                      <span>Rest</span>
-                      <HelpTip title="Rest timer">
-                        <p>A countdown between sets so you recover before the next one. Tap Skip to end it early.</p>
-                        <p>Turn it off any time from the ... menu at the top of the screen.</p>
-                      </HelpTip>
-                      <b className="tabular-nums text-ink">{fmtClock(restLeft)}</b>
-                      <button type="button" onClick={stopRest} className="font-semibold text-accent">
-                        Skip
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          }
-
-          if (s.done) {
-            return (
-              <div key={i} className="relative flex items-start gap-3">
-                <span
-                  className={`relative z-[1] mt-1 flex h-[38px] w-[34px] flex-none items-center justify-center bg-accent text-sm font-bold text-ink ${HEX}`}
-                >
-                  &#10003;
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setEditing(i)}
-                  className="flex min-w-0 flex-1 items-center justify-between rounded-2xl border border-line bg-glass px-3 py-2.5 text-left"
-                >
-                  <span className="flex items-center gap-2 text-sm text-ink">
-                    <span>
-                      <b className="italic">{s.reps}</b> reps &times; <b className="italic">{s.weight || 0}</b> lb
-                    </span>
-                    {s.percent && <PercentBadge percent={s.percent} />}
-                  </span>
-                  <span className="text-xs text-muted">Edit</span>
-                </button>
-              </div>
-            )
-          }
-
-          return (
-            <div key={i} className="relative flex items-start gap-3">
-              <span
-                className={`relative z-[1] mt-1 flex h-[38px] w-[34px] flex-none items-center justify-center bg-line text-sm font-bold text-ink ${HEX}`}
-              >
-                {i + 1}
-              </span>
-              <div className="flex min-w-0 flex-1 items-center justify-between rounded-2xl border border-dashed border-line px-3 py-2.5 text-muted">
-                <span className="flex items-center gap-2 text-sm">
-                  <span>
-                    <b className="italic">{s.reps || '-'}</b> reps &times;{' '}
-                    <b className="italic">{s.weight || '-'}</b> lb
-                  </span>
-                  {s.percent && <PercentBadge percent={s.percent} />}
-                </span>
-                <span className="text-[10px] uppercase tracking-wide">
-                  {s.toFailure ? 'to failure' : 'up next'}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-
-        <div className="relative flex items-center gap-3 pt-2">
-          <button
-            type="button"
-            aria-label="Add a set"
-            onClick={addSet}
-            className={`relative z-[1] flex h-[38px] w-[34px] flex-none items-center justify-center bg-accent text-xl text-ink ${HEX}`}
-          >
-            +
-          </button>
-          <button type="button" onClick={addSet} className="text-base font-bold text-accent">
-            Add Set
-          </button>
-          {current.sets.length > 1 && (
-            <button
-              type="button"
-              onClick={removeLastSet}
-              className="ml-auto text-xs text-muted hover:text-ink"
-            >
-              Remove last
-            </button>
-          )}
-        </div>
-      </div>
-
-      {error && <p className="text-sm text-danger">{error}</p>}
-
-      {allDone && (
         <button
           type="button"
-          disabled={busy}
-          onClick={() => {
-            setPickedEffort(current.effort)
-            setNoteText(current.note)
-            setNoteOpen(Boolean(current.note))
-            setSheet('effort')
-          }}
-          className="btn-accent w-full py-4 text-base"
+          aria-label="Exercise options"
+          onClick={() => setSheet('menu')}
+          className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-line-strong text-ink"
         >
-          {busy ? 'Saving...' : buttonLabel}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
         </button>
-      )}
+      </div>
+
+      {/* One bar per exercise: green done, red now */}
+      <div
+        role="img"
+        aria-label={`Exercise ${idx + 1} of ${exs.length}`}
+        className="mx-auto flex w-full max-w-xl flex-none gap-1 px-4"
+      >
+        {exs.map((e, n) => (
+          <span
+            key={e.key}
+            className={`h-1 flex-1 rounded-full ${
+              e.status === 'done'
+                ? 'bg-success'
+                : e.status === 'skipped'
+                  ? 'bg-dash'
+                  : n === idx
+                    ? 'bg-accent'
+                    : 'bg-line'
+            }`}
+          />
+        ))}
+      </div>
+
+      <div id="log-scroll" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="mx-auto max-w-xl space-y-4 px-4 pb-6 pt-4">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">
+                Exercise {idx + 1} of {exs.length}
+              </p>
+              <h1 className="font-display text-[44px] font-extrabold uppercase leading-none break-words text-ink">
+                {current.name}
+              </h1>
+            </div>
+            <div className="flex flex-none gap-2 pt-1">
+              <button
+                type="button"
+                aria-label="Previous exercise"
+                disabled={idx <= 0}
+                onClick={() => moveTo(idx - 1)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong text-ink disabled:opacity-30"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 5l-7 7 7 7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Next exercise"
+                disabled={idx >= exs.length - 1}
+                onClick={() => moveTo(idx + 1)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong text-ink disabled:opacity-30"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="-mt-2 space-y-1">
+            <p className="text-[15px] text-ink">
+              {planHasPercent ? (
+                <span className="font-semibold">
+                  {current.plan.target_sets ?? current.sets.length} sets &middot;{' '}
+                  {planSegments.map((seg, k) => (
+                    <span key={k}>
+                      {k > 0 && <span className="font-normal text-muted"> then </span>}
+                      {seg.sets}x{seg.reps}
+                      {seg.toFailure ? 'F' : ''}
+                      {seg.percent && <span className="text-accent-text"> @{seg.percent}</span>}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="font-semibold">
+                  {current.plan.target_sets ?? current.sets.length} sets
+                  {current.plan.target_reps ? ` · ${current.plan.target_reps}` : ''}
+                </span>
+              )}
+              <span className="text-muted">
+                {' '}
+                &middot; {doneCount} of {current.sets.length} logged
+              </span>{' '}
+              <HelpTip title="Reading the plan">
+                <p>
+                  <b className="text-ink">3 sets · 8</b> means do 3 sets of 8 reps. A range like 8-10 means anything in
+                  that range is fine.
+                </p>
+                <p>
+                  <b className="text-ink">F</b> means go to failure: keep going until you cannot do another good rep.
+                </p>
+                <p>
+                  <b className="text-ink">@80%</b> means use 80% of your max for that lift. The app works out the weight
+                  once you enter your max.
+                </p>
+                <p>Change the weight or reps to what you really did, then tap the big button at the bottom to log the set.</p>
+              </HelpTip>
+            </p>
+            {(lastLine || best > 0) && (
+              <p className="tabular text-sm text-muted">
+                {lastLine && (
+                  <>
+                    <span className="font-semibold text-accent-text">Last time</span>
+                    {last?.date ? ` ${last.date}` : ''}: {lastLine}
+                  </>
+                )}
+                {lastLine && best > 0 && ' · '}
+                {best > 0 && (
+                  <>
+                    Best <b className="text-ink">{best} lb</b>
+                  </>
+                )}{' '}
+                <HelpTip title="Last time and best">
+                  <p>Last time is what you lifted the last time you did this exercise, as weight x reps. Try to match it or beat it a little.</p>
+                  <p>Best is the heaviest weight you have logged for it. Beat it and you get a gold PR.</p>
+                </HelpTip>
+              </p>
+            )}
+            {current.swappedFrom && <p className="text-sm text-accent-text">Swapped in for {current.swappedFrom}</p>}
+            {planHasPercent && basisMax && (
+              <p className="text-sm text-muted">
+                {basisName} 1RM <b className="text-ink">{basisMax} lb</b>{' '}
+                <HelpTip title="What is a 1RM?">
+                  <p>
+                    Your one-rep max (1RM) is the heaviest weight you could lift for one good rep. Percents in your
+                    program are a share of this number.
+                  </p>
+                  <p>Not sure of yours? Tap Edit max and use the estimate: enter a weight and reps you did recently.</p>
+                </HelpTip>
+                <button type="button" onClick={openMaxes} className="ml-1 min-h-11 px-1 font-semibold text-accent-text">
+                  Edit max
+                </button>
+              </p>
+            )}
+            {parts && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {parts.map((part, k) => (
+                  <span key={k} className="flex items-center gap-1.5">
+                    {k > 0 && <span className="text-muted">+</span>}
+                    <span className="rounded-full border border-line-strong px-2.5 py-0.5 text-sm text-ink">{part}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {planHasPercent && !basisMax && !current.swappedFrom && !maxPromptHidden && (
+            <div className="card flex items-center gap-3 px-3 py-2.5 text-sm text-muted">
+              <p className="min-w-0 flex-1">
+                This uses percents. Add your <b className="text-ink">{basisName}</b> max and the app works out your
+                weights.
+              </p>
+              <button type="button" onClick={openMaxes} className="btn-accent-sm flex-none">
+                Set max
+              </button>
+              <button
+                type="button"
+                aria-label="Not now"
+                onClick={() => setMaxPromptHidden(true)}
+                className="flex h-11 w-11 flex-none items-center justify-center text-muted"
+              >
+                &#10005;
+              </button>
+            </div>
+          )}
+
+          {/* Every set at a glance. Logged sets are green (gold for a PR); tap one to fix it. */}
+          <div className="grid grid-cols-4 gap-2">
+            {current.sets.map((s, i) => {
+              if (s.done) {
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      startNextSet()
+                      setEditing(i)
+                    }}
+                    aria-label={`Set ${i + 1}: ${s.weight || 0} pounds for ${s.reps} reps${s.pr ? ', personal record' : ''}. Tap to edit.`}
+                    className={`flex h-[52px] items-center justify-center gap-1 rounded-[14px] font-display text-[19px] font-bold tabular ${
+                      s.pr ? 'bg-record text-on-record' : 'bg-success text-on-success'
+                    } ${editing === i ? 'ring-2 ring-ink ring-offset-2 ring-offset-canvas' : ''}`}
+                  >
+                    {s.pr ? (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
+                      </svg>
+                    ) : (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                    )}
+                    {s.weight || 0}×{s.reps}
+                  </button>
+                )
+              }
+              if (i === ci) {
+                return (
+                  <span
+                    key={i}
+                    className="flex h-[52px] items-center justify-center rounded-[14px] border-2 border-accent bg-surface text-[15px] font-semibold"
+                  >
+                    Set {i + 1}
+                  </span>
+                )
+              }
+              return (
+                <span
+                  key={i}
+                  className="flex h-[52px] items-center justify-center rounded-[14px] border border-dashed border-dash text-[15px] text-muted"
+                >
+                  {s.toFailure ? 'To fail' : `Set ${i + 1}`}
+                </span>
+              )
+            })}
+            <button
+              type="button"
+              aria-label="Add a set"
+              onClick={addSet}
+              className="flex h-[52px] items-center justify-center rounded-[14px] border border-dashed border-line-strong text-2xl text-muted"
+            >
+              +
+            </button>
+          </div>
+          {current.sets.length > 1 && !current.sets[current.sets.length - 1].done && (
+            <button type="button" onClick={removeLastSet} className="-mt-2 min-h-11 text-sm text-muted hover:text-ink">
+              Remove last set
+            </button>
+          )}
+
+          {prNote && (
+            <div role="status" className="flex items-center gap-3 rounded-2xl bg-record px-4 py-3 text-on-record">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
+              </svg>
+              <div>
+                <p className="font-display text-2xl font-extrabold uppercase leading-none">New PR</p>
+                <p className="text-[15px] font-semibold">
+                  {prNote.exercise} {prNote.weight} × {prNote.reps} (was {prNote.was})
+                </p>
+              </div>
+            </div>
+          )}
+
+          {resting ? (
+            <div className="card flex flex-col items-center gap-2 p-4">
+              <div className="relative h-[168px] w-[168px]">
+                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-line)" strokeWidth="8" />
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="52"
+                    fill="none"
+                    stroke="var(--color-accent)"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={RING}
+                    strokeDashoffset={ringOffset}
+                    className="transition-[stroke-dashoffset] duration-300 ease-linear"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-display text-[56px] font-extrabold leading-none tabular">{fmtClock(restLeft)}</span>
+                  <span className="label-caps flex items-center gap-1.5">
+                    Rest
+                    <HelpTip title="Rest timer">
+                      <p>A countdown between sets so you recover before the next one. Tap the big button to start early.</p>
+                      <p>Turn it off any time from the ... menu at the top of the screen.</p>
+                    </HelpTip>
+                  </span>
+                </div>
+              </div>
+              {nextSet && (
+                <p className="text-[15px] text-muted">
+                  Next:{' '}
+                  <span className="font-semibold text-ink">
+                    Set {ci + 1} · {nextSet.weight || 0} × {nextSet.reps || '-'}
+                  </span>
+                </p>
+              )}
+              <button type="button" onClick={() => addRest(30)} className="btn-ghost-sm">
+                +30 sec
+              </button>
+            </div>
+          ) : !allDone && nextSet ? (
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1">
+                <p className="font-display text-[22px] font-bold">
+                  {editing !== null ? `Editing set ${ci + 1}` : `Set ${ci + 1} of ${current.sets.length}`}
+                </p>
+                {nextSet.percent && <PercentBadge percent={nextSet.percent} />}
+                {(() => {
+                  const tw = targetWeight(basisMax, nextSet.percent, step)
+                  return tw ? <span className="text-sm font-semibold text-muted">Target {fmtTarget(tw)} lb</span> : null
+                })()}
+                <span className="ml-auto text-sm text-muted">
+                  {nextSet.toFailure ? (
+                    <span className="font-bold uppercase text-accent-text">To failure</span>
+                  ) : (current.rests[ci] ?? 0) > 0 ? (
+                    `Rest ${current.rests[ci]} sec after`
+                  ) : (
+                    'No rest after'
+                  )}
+                </span>
+              </div>
+              {(['weight', 'reps'] as const).map((field) => (
+                <div key={field} className="card px-3.5 py-2.5">
+                  <label htmlFor={`${field}-${ci}`} className="label-caps">
+                    {field === 'reps' ? 'Reps' : 'Weight · lb'}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
+                      onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
+                      className="flex h-14 w-14 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[28px] leading-none text-ink active:scale-95"
+                    >
+                      &minus;
+                    </button>
+                    <input
+                      id={`${field}-${ci}`}
+                      type="number"
+                      inputMode={field === 'reps' ? 'numeric' : 'decimal'}
+                      value={nextSet[field]}
+                      onChange={(e) => setField(ci, field, e.target.value)}
+                      className={`min-w-0 flex-1 rounded-xl bg-transparent text-center font-display text-[80px] font-extrabold leading-[1.05] tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
+                    />
+                    <button
+                      type="button"
+                      aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
+                      onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
+                      className="flex h-14 w-14 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[28px] leading-none text-ink active:scale-95"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : allDone ? (
+            <div className="card flex flex-col items-center gap-1.5 px-4 py-5 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success text-on-success">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+              </span>
+              <p className="font-display text-[28px] font-extrabold uppercase leading-tight">{current.name} done</p>
+              <p className="text-[15px] text-muted">Rate how it felt, then on to the next one.</p>
+            </div>
+          ) : null}
+
+          {error && <p className="text-sm text-danger">{error}</p>}
+        </div>
+      </div>
+
+      {/* The one big button, where your thumb is */}
+      <div className="flex-none border-t border-line bg-canvas px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3">
+        <div className="mx-auto max-w-xl">
+          {resting ? (
+            <button type="button" onClick={startNextSet} className={bigButton}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M7 4.5v15l13-7.5z" />
+              </svg>
+              Start set {ci + 1}
+            </button>
+          ) : allDone ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setPickedEffort(current.effort)
+                setNoteText(current.note)
+                setNoteOpen(Boolean(current.note))
+                setSheet('effort')
+              }}
+              className={bigButton}
+            >
+              {busy ? 'Saving...' : buttonLabel}
+            </button>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => void logSet()} className={bigButton}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+              {busy ? 'Saving...' : buttonLabel}
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Toast */}
       {message && (
@@ -1287,7 +1417,7 @@ export function WorkoutLogger({
                 <div className="max-h-[75vh] overflow-y-auto">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="truncate text-lg font-semibold text-ink">{program.name}</h2>
+                      <h2 className="truncate font-display text-2xl font-bold text-ink">{program.name}</h2>
                       <p className="mb-2 text-xs text-muted">
                         Week {program.week} of {program.totalWeeks} &middot; you are on{' '}
                         {splitDayLabel(program.days.find((d) => d.id === program.currentDayId)?.day_label ?? '').short}
@@ -1312,8 +1442,8 @@ export function WorkoutLogger({
                             key={g}
                             type="button"
                             onClick={() => first && setViewDayId(first.id)}
-                            className={`rounded-full border px-3 py-1 text-xs ${
-                              on ? 'border-accent font-bold text-accent' : 'border-line bg-glass text-ink'
+                            className={`min-h-11 rounded-full border px-3.5 text-sm ${
+                              on ? 'border-accent bg-accent font-semibold text-white' : 'border-line-strong text-ink'
                             }`}
                           >
                             {g || 'Days'}
@@ -1332,8 +1462,8 @@ export function WorkoutLogger({
                           key={d.id}
                           type="button"
                           onClick={() => setViewDayId(d.id)}
-                          className={`rounded-full border px-3 py-1 text-xs ${
-                            on ? 'border-accent font-bold text-accent' : 'border-line bg-glass text-ink'
+                          className={`min-h-11 rounded-full border px-3.5 text-sm ${
+                            on ? 'border-accent bg-accent font-semibold text-white' : 'border-line-strong text-ink'
                           }`}
                         >
                           {splitDayLabel(d.day_label).short.match(/^Day\s*\d+/i)?.[0] ?? splitDayLabel(d.day_label).short}
@@ -1355,9 +1485,9 @@ export function WorkoutLogger({
                       ? exs.map((e, n) => (
                           <div key={e.key} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
                             <span
-                              className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border text-[11px] ${
+                              className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border text-[11px] ${
                                 e.status === 'done'
-                                  ? 'border-transparent bg-accent text-canvas'
+                                  ? 'border-transparent bg-success text-on-success'
                                   : n === idx
                                     ? 'border-accent font-bold text-accent'
                                     : 'border-line text-muted'
@@ -1379,7 +1509,7 @@ export function WorkoutLogger({
                               <button
                                 type="button"
                                 onClick={() => jumpTo(n)}
-                                className="flex-none rounded-full border border-accent px-3 py-1 text-xs font-bold text-accent"
+                                className="flex min-h-11 flex-none items-center rounded-full border border-accent px-4 text-sm font-bold text-accent-text"
                               >
                                 Go &rsaquo;
                               </button>
@@ -1392,7 +1522,7 @@ export function WorkoutLogger({
                         ))
                       : viewing.exercises.map((e, n) => (
                           <div key={`${e.exercise_name}-${n}`} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
-                            <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full border border-line text-[11px] text-muted">
+                            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-line text-[11px] text-muted">
                               {n + 1}
                             </span>
                             <div className="min-w-0 flex-1">
@@ -1410,7 +1540,7 @@ export function WorkoutLogger({
 
             {sheet === 'maxes' && (
               <div className="max-h-[75vh] overflow-y-auto">
-                <h2 className="text-lg font-semibold text-ink">
+                <h2 className="font-display text-2xl font-bold text-ink">
                   Your maxes{' '}
                   <HelpTip title="Where do I get my max?">
                     <p>Use the heaviest weight you can lift for one clean rep, or tap the estimate link and enter a recent set.</p>
@@ -1505,8 +1635,8 @@ export function WorkoutLogger({
                       key={n}
                       type="button"
                       onClick={() => chooseStep(n)}
-                      className={`rounded-full border px-3 py-1 ${
-                        step === n ? 'border-accent font-bold text-accent' : 'border-line bg-glass text-ink'
+                      className={`min-h-11 rounded-full border px-3.5 text-sm ${
+                        step === n ? 'border-accent bg-accent font-semibold text-white' : 'border-line-strong text-ink'
                       }`}
                     >
                       {n} lb
@@ -1529,7 +1659,7 @@ export function WorkoutLogger({
 
             {sheet === 'menu' && (
               <div>
-                <h2 className="text-lg font-semibold text-ink">{current.name}</h2>
+                <h2 className="font-display text-2xl font-bold text-ink">{current.name}</h2>
                 <p className="mb-2 text-xs text-muted">Options for this exercise</p>
                 {[
                   {
@@ -1562,7 +1692,7 @@ export function WorkoutLogger({
                     {item.label}
                     {'value' in item && <span className="text-sm text-muted">{item.value}</span>}
                     {'tag' in item && (
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                      <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
                         {item.tag}
                       </span>
                     )}
@@ -1573,7 +1703,7 @@ export function WorkoutLogger({
 
             {sheet === 'history' && (
               <div>
-                <h2 className="text-lg font-semibold text-ink">History</h2>
+                <h2 className="font-display text-2xl font-bold text-ink">History</h2>
                 <p className="mb-2 text-xs text-muted">{current.name}</p>
                 {exHistory.length === 0 ? (
                   <p className="py-3 text-sm text-muted">No history yet. This one will be the first.</p>
@@ -1599,7 +1729,7 @@ export function WorkoutLogger({
 
             {sheet === 'replace' && (
               <div>
-                <h2 className="text-lg font-semibold text-ink">Replace {current.name}</h2>
+                <h2 className="font-display text-2xl font-bold text-ink">Replace {current.name}</h2>
                 <p className="mb-3 text-xs text-muted">
                   Keeps the same sets and reps. Use this when a machine is busy.
                 </p>
@@ -1632,7 +1762,7 @@ export function WorkoutLogger({
 
             {sheet === 'effort' && (
               <div>
-                <h2 className="text-lg font-semibold text-ink">{current.name} done</h2>
+                <h2 className="font-display text-2xl font-bold text-ink">{current.name} done</h2>
                 <p className="mb-3 text-xs text-muted">
                   How did it feel?{' '}
                   <HelpTip title="Why rate it?">
@@ -1655,12 +1785,12 @@ export function WorkoutLogger({
                         onClick={() => pickEffort(value)}
                         className={`flex flex-col items-center gap-0.5 rounded-2xl border px-1 py-3 transition-colors ${
                           selected
-                            ? 'border-accent bg-accent text-ink'
-                            : 'border-line bg-glass text-muted'
+                            ? 'border-accent bg-accent text-white'
+                            : 'border-line-strong text-muted'
                         }`}
                       >
-                        <span className="text-xl font-bold text-ink">{value}</span>
-                        <span className="text-[9px] leading-tight">{label}</span>
+                        <span className="font-display text-2xl font-extrabold">{value}</span>
+                        <span className="text-xs leading-tight">{label}</span>
                       </button>
                     )
                   })}

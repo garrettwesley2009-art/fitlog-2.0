@@ -22,7 +22,7 @@ export default async function AdminPage() {
   if (error || !data) {
     return (
       <div className="space-y-3">
-        <h1 className="text-2xl font-semibold text-ink">Live users</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">Live users</h1>
         <p className="text-sm text-muted">
           The live stats are not set up yet. Run add_live_users.sql in Supabase, then reload this page.
         </p>
@@ -50,7 +50,7 @@ export default async function AdminPage() {
       <LiveRefresh />
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-accent">Admin</p>
-        <h1 className="mt-1 text-2xl font-semibold text-ink">Live users</h1>
+        <h1 className="mt-1 font-display text-[34px] font-extrabold text-ink">Live users</h1>
         <p className="mt-1 text-xs text-muted">Updates every 30 seconds &middot; last update {updated} ET</p>
       </div>
 

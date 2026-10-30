@@ -114,7 +114,7 @@ export function Welcome({
           <div className="text-6xl" aria-hidden="true">
             {slide.icon}
           </div>
-          <h1 className="mt-6 text-2xl font-bold text-ink">{slide.title}</h1>
+          <h1 className="mt-6 font-display text-[34px] font-extrabold text-ink">{slide.title}</h1>
           <p className="mt-3 text-sm leading-relaxed text-muted">{slide.body}</p>
         </section>
       )}
@@ -122,7 +122,7 @@ export function Welcome({
       {onForm && (
         <section className="glass-card flex-1 space-y-6 p-6">
           <div>
-            <h1 className="text-2xl font-bold text-ink">About you</h1>
+            <h1 className="font-display text-[34px] font-extrabold text-ink">About you</h1>
             <p className="mt-1 text-sm text-muted">Two quick things so the app can be yours.</p>
           </div>
 

@@ -44,13 +44,13 @@ export default async function TemplateDetailPage({
           </p>
           {isNew && <NewBadge />}
         </div>
-        <h1 className="mt-1 text-2xl font-semibold text-ink">{template.name}</h1>
+        <h1 className="mt-1 font-display text-[34px] font-extrabold text-ink">{template.name}</h1>
         {categories.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {categories.map((c) => (
               <span
                 key={c}
-                className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted"
+                className="rounded-full border border-line-strong px-2 py-0.5 text-xs uppercase tracking-wide text-muted"
               >
                 {categoryLabel(c)}
               </span>

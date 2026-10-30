@@ -279,3 +279,82 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* === FitLog redesign B (bold) === */
+/* Each color has one job:
+   red (accent) = do this / you are here, green (success) = done, gold (record) = a PR or badge,
+   blue (insight) = trends, charts and the Coach, orange (streak) = consistency.
+   chart-1..4 are only for categories in charts (muscle groups), always shown with a label. */
+@theme static {
+  --color-record: #f5b83d;
+  --color-on-record: #0b0b0c;
+  --color-insight: #5aa9ff;
+  --color-streak: #ff9f43;
+  --color-chart-1: #5aa9ff;
+  --color-chart-2: #a78bfa;
+  --color-chart-3: #2dd4bf;
+  --color-chart-4: #f472b6;
+  --color-bar: #111113;            /* bottom bar */
+  --color-dash: #4a4a52;           /* dashed outlines for "not yet" */
+}
+
+/* Big condensed type for titles and numbers */
+@utility font-display {
+  font-family: var(--font-barlow-condensed), 'Arial Narrow', Arial, sans-serif;
+}
+
+/* Shared pieces. In the components layer, so a utility class added on top
+   (border-accent, p-4, a different color) always wins. */
+@layer components {
+  /* Small uppercase section label */
+  .label-caps {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* Solid card */
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+
+  /* Choice chips: 44px tall, clear edge when off, solid red when on */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0 0.875rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-line-strong);
+    background-color: transparent;
+    color: var(--color-ink);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: background-color 0.15s, transform 0.1s;
+  }
+  .chip:active { transform: scale(0.97); }
+  .chip.chip-on {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #ffffff;
+    font-weight: 600;
+  }
+}
+
+/* Tap feedback on every button and link, without moving anything around it */
+button, a { touch-action: manipulation; }
+
+/* Page titles everywhere: bold, condensed, uppercase. In the base layer so a page's own classes still win. */
+@layer base {
+  h1 {
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 1.05;
+    letter-spacing: 0.01em;
+  }
+}

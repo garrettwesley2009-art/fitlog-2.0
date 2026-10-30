@@ -15,11 +15,11 @@ export function HomeGreeting({ name }: { name: string }) {
   }, [])
 
   return (
-    <div>
-      <p className="h-4 text-xs text-muted">{info?.day ?? ''}</p>
-      <h1 className="mt-0.5 text-2xl font-semibold text-ink">
-        {info?.hello ?? 'Hello'}, {name}
-      </h1>
+    <div className="flex items-baseline justify-between gap-3">
+      <p className="text-[17px] font-medium text-muted">
+        {info?.hello ?? 'Hello'}, <span className="font-semibold text-ink">{name}</span>
+      </p>
+      <p className="h-5 text-sm text-muted">{info?.day ?? ''}</p>
     </div>
   )
 }

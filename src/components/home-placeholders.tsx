@@ -4,7 +4,7 @@
 
 function SoonTag() {
   return (
-    <span className="rounded-full border border-line px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+    <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted">
       Coming soon
     </span>
   )
@@ -12,16 +12,18 @@ function SoonTag() {
 
 export function BadgesPlaceholder() {
   return (
-    <div className="glass-card p-5 opacity-60">
+    <div className="rounded-card border border-dashed border-dash p-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-accent">Badges</p>
+        <p className="label-caps">Badges</p>
         <SoonTag />
       </div>
       <div className="mt-4 flex gap-3">
         {['First workout', 'First PR', 'Full week', '3 weeks'].map((name) => (
-          <div key={name} className="w-16 text-center text-[10px] text-muted">
-            <div className="mx-auto mb-1.5 flex h-12 w-12 items-center justify-center rounded-full border border-line bg-glass-hover text-lg">
-              &#9733;
+          <div key={name} className="w-16 text-center text-xs leading-tight text-muted">
+            <div className="mx-auto mb-1.5 flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-record/60 text-record/70">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
+              </svg>
             </div>
             {name}
           </div>
@@ -33,12 +35,12 @@ export function BadgesPlaceholder() {
 
 export function GoalPlaceholder() {
   return (
-    <div className="glass-card p-5 opacity-60">
+    <div className="rounded-card border border-dashed border-dash p-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-accent">Goal</p>
+        <p className="label-caps">Goal</p>
         <SoonTag />
       </div>
-      <p className="mt-2 text-base font-semibold text-ink">Set a goal and track it here</p>
+      <p className="mt-2 font-display text-xl font-bold text-ink">Set a goal and track it here</p>
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-line">
         <div className="h-full w-0 rounded-full bg-accent" />
       </div>
@@ -49,12 +51,12 @@ export function GoalPlaceholder() {
 
 export function QuestPlaceholder() {
   return (
-    <div className="glass-card p-5 opacity-60">
+    <div className="rounded-card border border-dashed border-dash p-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-accent">Getting started</p>
+        <p className="label-caps">Getting started</p>
         <SoonTag />
       </div>
-      <p className="mt-2 text-base font-semibold text-ink">Finish your profile</p>
+      <p className="mt-2 font-display text-xl font-bold text-ink">Finish your profile</p>
       <p className="mt-1 text-xs text-muted">
         A few quick questions about you and your goals, for sharper coaching.
       </p>

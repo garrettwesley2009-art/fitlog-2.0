@@ -65,20 +65,20 @@ export function NavBar({ displayName }: { displayName: string }) {
     <>
       {/* Top: shared header (not on the You pages) plus this section's tabs */}
       {(showHeader || showSubs) && (
-        <div className="sticky top-0 z-30 border-b border-line bg-canvas/70 backdrop-blur">
+        <div className="sticky top-0 z-30 border-b border-line bg-canvas">
           {showHeader && (
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+            <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
               {/* Logo goes here later: swap the text for an <Image> */}
               <Link
                 href="/dashboard"
-                className="text-sm font-semibold uppercase tracking-[0.3em] text-muted"
+                className="font-display text-[22px] font-bold uppercase tracking-[0.16em] text-ink"
               >
-                FitLog
+                <span className="text-accent-text">Fit</span>Log
               </Link>
               <Link
                 href="/you"
                 aria-label="Your profile"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-glass-hover text-xs font-medium text-muted hover:text-ink"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-inset text-base font-semibold text-ink"
               >
                 {initial}
               </Link>
@@ -99,8 +99,8 @@ export function NavBar({ displayName }: { displayName: string }) {
                     aria-current={active ? 'page' : undefined}
                     className={
                       active
-                        ? 'shrink-0 border-b-2 border-accent py-3 text-sm font-medium text-ink'
-                        : 'shrink-0 border-b-2 border-transparent py-3 text-sm font-medium text-muted hover:text-ink'
+                        ? 'flex min-h-11 shrink-0 items-center border-b-[3px] border-accent text-[15px] font-semibold text-ink'
+                        : 'flex min-h-11 shrink-0 items-center border-b-[3px] border-transparent text-[15px] font-medium text-muted hover:text-ink'
                     }
                   >
                     {sub.label}
@@ -115,9 +115,9 @@ export function NavBar({ displayName }: { displayName: string }) {
       {/* Bottom: the main sections */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bar"
       >
-        <ul className="mx-auto flex max-w-5xl items-center justify-around px-2 pb-[env(safe-area-inset-bottom)]">
+        <ul className="mx-auto flex max-w-5xl items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
           {NAV_SECTIONS.map((s) => {
             const active = section?.id === s.id
             return (
@@ -126,17 +126,16 @@ export function NavBar({ displayName }: { displayName: string }) {
                   href={s.href}
                   data-tour={`nav-${s.id}`}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
-                    active ? 'text-ink' : 'text-muted hover:text-ink'
+                  className={`flex min-h-14 flex-col items-center justify-center gap-0.5 border-t-[3px] pb-1.5 pt-1.5 text-xs transition-colors ${
+                    active
+                      ? 'border-accent font-semibold text-ink'
+                      : 'border-transparent font-medium text-muted hover:text-ink'
                   }`}
                 >
-                  <span className={active ? 'text-accent' : ''}>
+                  <span className={active ? 'text-accent-text' : ''}>
                     <NavIcon id={s.id} />
                   </span>
                   {s.label}
-                  <span
-                    className={`h-1 w-1 rounded-full ${active ? 'bg-accent' : 'bg-transparent'}`}
-                  />
                 </Link>
               </li>
             )

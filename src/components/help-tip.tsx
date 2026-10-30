@@ -27,7 +27,7 @@ export function HelpTip({ title, children, className = '' }: { title: string; ch
           e.stopPropagation()
           setOpen(true)
         }}
-        className={`inline-flex h-5 w-5 flex-none items-center justify-center rounded-full border border-muted/60 align-middle text-[11px] font-semibold leading-none text-muted active:bg-glass-hover ${className}`}
+        className={`relative inline-flex h-6 w-6 flex-none items-center justify-center rounded-full border border-line-strong align-middle text-xs font-semibold normal-case leading-none tracking-normal text-muted before:absolute before:-inset-2.5 active:bg-glass-hover ${className}`}
       >
         ?
       </button>
@@ -42,9 +42,9 @@ export function HelpTip({ title, children, className = '' }: { title: string; ch
             aria-modal="true"
             aria-labelledby={id}
             onClick={(e) => e.stopPropagation()}
-            className="glass-card w-full max-w-sm bg-surface p-5 text-left"
+            className="glass-card w-full max-w-sm bg-surface p-5 text-left normal-case tracking-normal"
           >
-            <h2 id={id} className="text-base font-semibold text-ink">
+            <h2 id={id} className="font-display text-2xl font-bold text-ink">
               {title}
             </h2>
             <div className="mt-2 space-y-2 text-sm text-muted">{children}</div>
