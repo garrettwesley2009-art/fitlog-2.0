@@ -951,10 +951,10 @@ export function WorkoutLogger({
     'flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50'
 
   return (
-    // Focus mode: while logging, the workout takes the whole screen (the app's bars are hidden
-    // underneath). The X at the top left leaves; every logged set is already saved.
-    <div className="fixed inset-0 z-50 flex flex-col bg-canvas pt-[env(safe-area-inset-top)] text-ink">
-      <div className="mx-auto flex h-14 w-full max-w-xl flex-none items-center gap-2 px-3">
+    // Lives inside the Workout > Log page: the app's top tabs and bottom bar stay visible.
+    // The X at the top left leaves; every logged set is already saved.
+    <div className="mx-auto flex w-full max-w-xl flex-col text-ink" data-x="LOG-IN-APP">
+      <div className="flex h-14 w-full flex-none items-center gap-2">
         <Link
           href="/dashboard"
           aria-label="Leave workout (your logged sets are saved)"
@@ -996,7 +996,7 @@ export function WorkoutLogger({
       <div
         role="img"
         aria-label={`Exercise ${idx + 1} of ${exs.length}`}
-        className="mx-auto flex w-full max-w-xl flex-none gap-1 px-4"
+        className="flex w-full flex-none gap-1"
       >
         {exs.map((e, n) => (
           <span
@@ -1014,8 +1014,8 @@ export function WorkoutLogger({
         ))}
       </div>
 
-      <div id="log-scroll" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto max-w-xl space-y-4 px-4 pb-6 pt-4">
+      <div id="log-scroll">
+        <div className="space-y-4 pb-6 pt-4">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">
@@ -1386,7 +1386,7 @@ export function WorkoutLogger({
 
       {/* After the last set: rate the exercise. Logging a set lives inside the set list. */}
       {allDone && (
-        <div className="flex-none border-t border-line bg-canvas px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3">
+        <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 -mx-4 border-t border-line bg-canvas px-4 pb-3 pt-3">
           <div className="mx-auto max-w-xl">
             <button
               type="button"
