@@ -161,7 +161,12 @@ function splitDayLabel(label: string): { group: string | null; short: string } {
 }
 
 function describe(s: LastTimeSet) {
-  return `${s.weight ?? '-'}x${s.reps ?? '-'}`
+  const w = s.weight != null ? `${s.weight}` : null
+  const r = s.reps != null ? `${s.reps}` : null
+  if (w && r) return `${w} × ${r}`
+  if (w) return `${w} lb`
+  if (r) return `${r} reps`
+  return '-'
 }
 
 function buildExercises(
@@ -1153,70 +1158,6 @@ export function WorkoutLogger({
             </div>
           )}
 
-          {/* Every set at a glance. Logged sets are green (gold for a PR); tap one to fix it. */}
-          <div className="flex flex-wrap gap-2" data-x="LOG-BIG-NUMBERS">
-            {current.sets.map((s, i) => {
-              if (s.done) {
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => {
-                      startNextSet()
-                      setEditing(i)
-                    }}
-                    aria-label={`Set ${i + 1}: ${s.weight || 0} pounds for ${s.reps} reps${s.pr ? ', personal record' : ''}. Tap to edit.`}
-                    className={`flex h-11 min-w-[76px] flex-1 items-center justify-center gap-1 rounded-[12px] px-2 font-display text-[17px] font-bold tabular ${
-                      s.pr ? 'bg-record text-on-record' : 'bg-success text-on-success'
-                    } ${editing === i ? 'ring-2 ring-ink ring-offset-2 ring-offset-canvas' : ''}`}
-                  >
-                    {s.pr ? (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
-                      </svg>
-                    ) : (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M5 12.5l4.5 4.5L19 7.5" />
-                      </svg>
-                    )}
-                    {s.weight || 0}×{s.reps}
-                  </button>
-                )
-              }
-              if (i === ci) {
-                return (
-                  <span
-                    key={i}
-                    className="flex h-11 min-w-[76px] flex-1 items-center justify-center rounded-[12px] border-2 border-accent bg-surface px-2 text-[15px] font-semibold"
-                  >
-                    Set {i + 1}
-                  </span>
-                )
-              }
-              return (
-                <span
-                  key={i}
-                  className="flex h-11 min-w-[76px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-dash px-2 text-[15px] text-muted"
-                >
-                  {s.toFailure ? 'To fail' : `Set ${i + 1}`}
-                </span>
-              )
-            })}
-            <button
-              type="button"
-              aria-label="Add a set"
-              onClick={addSet}
-              className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] border border-dashed border-line-strong text-2xl text-muted"
-            >
-              +
-            </button>
-          </div>
-          {current.sets.length > 1 && !current.sets[current.sets.length - 1].done && (
-            <button type="button" onClick={removeLastSet} className="-mt-2 min-h-11 text-sm text-muted hover:text-ink">
-              Remove last set
-            </button>
-          )}
-
           {prNote && (
             <div role="status" className="flex items-center gap-3 rounded-2xl bg-record px-4 py-3 text-on-record">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1232,17 +1173,17 @@ export function WorkoutLogger({
           )}
 
           {resting ? (
-            <div className="card flex flex-col items-center gap-2 p-4">
-              <div className="relative h-[168px] w-[168px]">
+            <div className="card flex items-center gap-4 p-3" data-x="LOG-POLISH">
+              <div className="relative h-24 w-24 flex-none">
                 <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
-                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-line)" strokeWidth="8" />
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-line)" strokeWidth="9" />
                   <circle
                     cx="60"
                     cy="60"
                     r="52"
                     fill="none"
                     stroke="var(--color-accent)"
-                    strokeWidth="8"
+                    strokeWidth="9"
                     strokeLinecap="round"
                     strokeDasharray={RING}
                     strokeDashoffset={ringOffset}
@@ -1250,86 +1191,184 @@ export function WorkoutLogger({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-display text-[56px] font-extrabold leading-none tabular">{fmtClock(restLeft)}</span>
-                  <span className="label-caps flex items-center gap-1.5">
-                    Rest
-                    <HelpTip title="Rest timer">
-                      <p>A countdown between sets so you recover before the next one. Tap the big button to start early.</p>
-                      <p>Turn it off any time from the ... menu at the top of the screen.</p>
-                    </HelpTip>
-                  </span>
+                  <span className="font-display text-[26px] font-extrabold leading-none tabular">{fmtClock(restLeft)}</span>
+                  <span className="label-caps">Rest</span>
                 </div>
               </div>
-              {nextSet && (
-                <p className="text-[15px] text-muted">
-                  Next:{' '}
-                  <span className="font-semibold text-ink">
-                    Set {ci + 1} · {nextSet.weight || 0} × {nextSet.reps || '-'}
-                  </span>
-                </p>
-              )}
-              <button type="button" onClick={() => addRest(30)} className="btn-ghost-sm">
-                +30 sec
-              </button>
+              <div className="min-w-0 flex-1 space-y-2">
+                {nextSet && (
+                  <p className="text-[15px] text-muted">
+                    Next:{' '}
+                    <span className="font-semibold text-ink">
+                      Set {ci + 1} · {nextSet.weight || 0} × {nextSet.reps || '-'}
+                    </span>{' '}
+                    <HelpTip title="Rest timer">
+                      <p>A countdown between sets so you recover before the next one. Tap Start set to begin early.</p>
+                      <p>Turn it off any time from the ... menu at the top of the screen.</p>
+                    </HelpTip>
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={startNextSet}
+                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent font-bold text-white active:scale-[0.97]"
+                  >
+                    Start set {ci + 1}
+                  </button>
+                  <button type="button" onClick={() => addRest(30)} className="btn-ghost-sm">
+                    +30 sec
+                  </button>
+                </div>
+              </div>
             </div>
-          ) : !allDone && nextSet ? (
-            <div className="space-y-2.5">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1">
-                <p className="font-display text-[22px] font-bold">
-                  {editing !== null ? `Editing set ${ci + 1}` : `Set ${ci + 1} of ${current.sets.length}`}
-                </p>
-                {nextSet.percent && <PercentBadge percent={nextSet.percent} />}
-                {(() => {
+          ) : null}
+
+          <div className="card p-2" data-x="LOG-SET-LIST">
+            <ul className="space-y-1.5">
+              {current.sets.map((st, i) => {
+                const isCur = i === ci && !allDone
+                if (isCur && nextSet && !resting) {
                   const tw = targetWeight(basisMax, nextSet.percent, step)
-                  return tw ? <span className="text-sm font-semibold text-muted">Target {fmtTarget(tw)} lb</span> : null
-                })()}
-                <span className="ml-auto text-[15px] text-muted">
-                  {nextSet.toFailure ? (
-                    <span className="font-bold uppercase text-accent-text">To failure</span>
-                  ) : (current.rests[ci] ?? 0) > 0 ? (
-                    `Rest ${current.rests[ci]} sec after`
-                  ) : (
-                    'No rest after'
-                  )}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {(['weight', 'reps'] as const).map((field) => (
-                  <div key={field} className="card px-2.5 py-3 text-center">
-                    <label htmlFor={`${field}-${ci}`} className="label-caps">
-                      {field === 'reps' ? 'Reps' : 'Weight · lb'}
-                    </label>
-                    <input
-                      id={`${field}-${ci}`}
-                      type="number"
-                      inputMode={field === 'reps' ? 'numeric' : 'decimal'}
-                      value={nextSet[field]}
-                      onChange={(e) => setField(ci, field, e.target.value)}
-                      className={`mt-1 w-full min-w-0 rounded-xl bg-transparent text-center font-display text-[68px] font-extrabold leading-[1.05] tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
-                    />
-                    <div className="mt-2 flex gap-2">
+                  return (
+                    <li key={i} className="rounded-2xl border-2 border-accent bg-surface p-3">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <p className="font-display text-xl font-bold">
+                          {editing !== null ? `Editing set ${i + 1}` : `Set ${i + 1} of ${current.sets.length}`}
+                        </p>
+                        {nextSet.percent && <PercentBadge percent={nextSet.percent} />}
+                        {tw && <span className="text-sm font-semibold text-muted">Target {fmtTarget(tw)} lb</span>}
+                        <span className="ml-auto text-sm text-muted">
+                          {nextSet.toFailure ? (
+                            <span className="font-bold uppercase text-accent-text">To failure</span>
+                          ) : (current.rests[ci] ?? 0) > 0 ? (
+                            `Rest ${current.rests[ci]} sec after`
+                          ) : (
+                            'No rest after'
+                          )}
+                        </span>
+                      </div>
+                      {(['weight', 'reps'] as const).map((field) => (
+                        <div key={field} className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
+                            onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
+                            className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
+                          >
+                            &minus;
+                          </button>
+                          <div className="text-center">
+                            <label htmlFor={`${field}-${ci}`} className="label-caps block">
+                              {field === 'reps' ? 'Reps' : 'Weight · lb'}
+                            </label>
+                            <input
+                              id={`${field}-${ci}`}
+                              type="number"
+                              inputMode={field === 'reps' ? 'numeric' : 'decimal'}
+                              value={nextSet[field]}
+                              onChange={(e) => setField(ci, field, e.target.value)}
+                              className={`w-full min-w-0 rounded-xl bg-transparent text-center font-display text-[52px] font-extrabold leading-none tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
+                            onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
+                            className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
+                          >
+                            +
+                          </button>
+                        </div>
+                      ))}
                       <button
                         type="button"
-                        aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
-                        onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
-                        className="flex h-14 flex-1 items-center justify-center rounded-2xl border border-line-strong bg-inset text-[30px] leading-none text-ink active:scale-95"
+                        disabled={busy}
+                        onClick={() => void logSet()}
+                        className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-lg font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
                       >
-                        &minus;
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M5 12.5l4.5 4.5L19 7.5" />
+                        </svg>
+                        {busy ? 'Saving...' : buttonLabel}
                       </button>
+                    </li>
+                  )
+                }
+                if (isCur && nextSet && resting) {
+                  return (
+                    <li
+                      key={i}
+                      className="flex min-h-12 items-center justify-between rounded-xl border-2 border-accent bg-surface px-3 tabular"
+                    >
+                      <span className="font-semibold">
+                        Set {i + 1} <span className="text-sm font-normal text-muted">up next</span>
+                      </span>
+                      <span className="font-display text-[19px] font-bold">
+                        {nextSet.weight || 0} × {nextSet.reps || '-'}
+                      </span>
+                    </li>
+                  )
+                }
+                if (st.done) {
+                  return (
+                    <li key={i}>
                       <button
                         type="button"
-                        aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
-                        onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
-                        className="flex h-14 flex-1 items-center justify-center rounded-2xl border border-line-strong bg-inset text-[30px] leading-none text-ink active:scale-95"
+                        onClick={() => {
+                          startNextSet()
+                          setEditing(i)
+                        }}
+                        aria-label={`Set ${i + 1}: ${st.weight || 0} pounds for ${st.reps} reps${st.pr ? ', personal record' : ''}. Tap to edit.`}
+                        className="flex min-h-12 w-full items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-left"
                       >
-                        +
+                        <span
+                          className={`flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full ${
+                            st.pr ? 'bg-record text-on-record' : 'bg-success text-on-success'
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {st.pr ? (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z" /></svg>
+                          ) : (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                          )}
+                        </span>
+                        <span className="text-[15px] text-muted">{st.pr ? `Set ${i + 1} · PR` : `Set ${i + 1}`}</span>
+                        <span className={`ml-auto font-display text-[19px] font-bold tabular ${st.pr ? 'text-record' : 'text-ink'}`}>
+                          {st.weight || 0} × {st.reps}
+                        </span>
                       </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    </li>
+                  )
+                }
+                return (
+                  <li
+                    key={i}
+                    className="flex min-h-11 items-center justify-between rounded-xl border border-dashed border-dash px-3 text-[15px] text-muted tabular"
+                  >
+                    <span>Set {i + 1}</span>
+                    <span>{st.toFailure ? 'To failure' : `${st.weight || '-'} × ${st.reps || '-'}`}</span>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="mt-1.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={addSet}
+                className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-dashed border-line-strong text-[15px] font-semibold text-muted"
+              >
+                + Add set
+              </button>
+              {current.sets.length > 1 && !current.sets[current.sets.length - 1].done && (
+                <button type="button" onClick={removeLastSet} className="min-h-11 px-3 text-sm text-muted hover:text-ink">
+                  Remove last set
+                </button>
+              )}
             </div>
-          ) : allDone ? (
+          </div>
+          {allDone ? (
             <div className="card flex flex-col items-center gap-1.5 px-4 py-5 text-center">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success text-on-success">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1345,17 +1384,10 @@ export function WorkoutLogger({
         </div>
       </div>
 
-      {/* The one big button, where your thumb is */}
-      <div className="flex-none border-t border-line bg-canvas px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3">
-        <div className="mx-auto max-w-xl">
-          {resting ? (
-            <button type="button" onClick={startNextSet} className={bigButton}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M7 4.5v15l13-7.5z" />
-              </svg>
-              Start set {ci + 1}
-            </button>
-          ) : allDone ? (
+      {/* After the last set: rate the exercise. Logging a set lives inside the set list. */}
+      {allDone && (
+        <div className="flex-none border-t border-line bg-canvas px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3">
+          <div className="mx-auto max-w-xl">
             <button
               type="button"
               disabled={busy}
@@ -1369,16 +1401,9 @@ export function WorkoutLogger({
             >
               {busy ? 'Saving...' : buttonLabel}
             </button>
-          ) : (
-            <button type="button" disabled={busy} onClick={() => void logSet()} className={bigButton}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-              {busy ? 'Saving...' : buttonLabel}
-            </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Toast */}
       {message && (
