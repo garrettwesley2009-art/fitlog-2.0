@@ -187,9 +187,12 @@ function buildExercises(
     const count = Math.max(goals.length, 1, ...mine.map((s) => s.set_index))
 
     const sets: SetState[] = []
+    // Weight from the latest set already logged in this workout (survives a reload).
+    let carryWeight = ''
     for (let i = 0; i < count; i++) {
       const done = byIndex.get(i + 1)
       if (done) {
+        carryWeight = numStr(done.weight)
         sets.push({
           reps: numStr(done.reps),
           weight: numStr(done.weight),
@@ -207,7 +210,7 @@ function buildExercises(
       const tw = targetWeight(basisMax, goals[i]?.percent ?? null, step)
       sets.push({
         reps: numStr(goals[i]?.reps ?? prev?.reps),
-        weight: tw ? String(tw.low) : numStr(prev?.weight),
+        weight: tw ? String(tw.low) : carryWeight || numStr(prev?.weight),
         toFailure: Boolean(goals[i]?.toFailure),
         percent: goals[i]?.percent ?? null,
         auto: Boolean(tw),
@@ -1151,7 +1154,7 @@ export function WorkoutLogger({
           )}
 
           {/* Every set at a glance. Logged sets are green (gold for a PR); tap one to fix it. */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="flex flex-wrap gap-2" data-x="LOG-BIG-NUMBERS">
             {current.sets.map((s, i) => {
               if (s.done) {
                 return (
@@ -1163,7 +1166,7 @@ export function WorkoutLogger({
                       setEditing(i)
                     }}
                     aria-label={`Set ${i + 1}: ${s.weight || 0} pounds for ${s.reps} reps${s.pr ? ', personal record' : ''}. Tap to edit.`}
-                    className={`flex h-[52px] items-center justify-center gap-1 rounded-[14px] font-display text-[19px] font-bold tabular ${
+                    className={`flex h-11 min-w-[76px] flex-1 items-center justify-center gap-1 rounded-[12px] px-2 font-display text-[17px] font-bold tabular ${
                       s.pr ? 'bg-record text-on-record' : 'bg-success text-on-success'
                     } ${editing === i ? 'ring-2 ring-ink ring-offset-2 ring-offset-canvas' : ''}`}
                   >
@@ -1184,7 +1187,7 @@ export function WorkoutLogger({
                 return (
                   <span
                     key={i}
-                    className="flex h-[52px] items-center justify-center rounded-[14px] border-2 border-accent bg-surface text-[15px] font-semibold"
+                    className="flex h-11 min-w-[76px] flex-1 items-center justify-center rounded-[12px] border-2 border-accent bg-surface px-2 text-[15px] font-semibold"
                   >
                     Set {i + 1}
                   </span>
@@ -1193,7 +1196,7 @@ export function WorkoutLogger({
               return (
                 <span
                   key={i}
-                  className="flex h-[52px] items-center justify-center rounded-[14px] border border-dashed border-dash text-[15px] text-muted"
+                  className="flex h-11 min-w-[76px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-dash px-2 text-[15px] text-muted"
                 >
                   {s.toFailure ? 'To fail' : `Set ${i + 1}`}
                 </span>
@@ -1203,7 +1206,7 @@ export function WorkoutLogger({
               type="button"
               aria-label="Add a set"
               onClick={addSet}
-              className="flex h-[52px] items-center justify-center rounded-[14px] border border-dashed border-line-strong text-2xl text-muted"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] border border-dashed border-line-strong text-2xl text-muted"
             >
               +
             </button>
@@ -1280,7 +1283,7 @@ export function WorkoutLogger({
                   const tw = targetWeight(basisMax, nextSet.percent, step)
                   return tw ? <span className="text-sm font-semibold text-muted">Target {fmtTarget(tw)} lb</span> : null
                 })()}
-                <span className="ml-auto text-sm text-muted">
+                <span className="ml-auto text-[15px] text-muted">
                   {nextSet.toFailure ? (
                     <span className="font-bold uppercase text-accent-text">To failure</span>
                   ) : (current.rests[ci] ?? 0) > 0 ? (
@@ -1290,39 +1293,41 @@ export function WorkoutLogger({
                   )}
                 </span>
               </div>
-              {(['weight', 'reps'] as const).map((field) => (
-                <div key={field} className="card px-3.5 py-2.5">
-                  <label htmlFor={`${field}-${ci}`} className="label-caps">
-                    {field === 'reps' ? 'Reps' : 'Weight · lb'}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
-                      onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
-                      className="flex h-14 w-14 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[28px] leading-none text-ink active:scale-95"
-                    >
-                      &minus;
-                    </button>
+              <div className="grid grid-cols-2 gap-3">
+                {(['weight', 'reps'] as const).map((field) => (
+                  <div key={field} className="card px-2.5 py-3 text-center">
+                    <label htmlFor={`${field}-${ci}`} className="label-caps">
+                      {field === 'reps' ? 'Reps' : 'Weight · lb'}
+                    </label>
                     <input
                       id={`${field}-${ci}`}
                       type="number"
                       inputMode={field === 'reps' ? 'numeric' : 'decimal'}
                       value={nextSet[field]}
                       onChange={(e) => setField(ci, field, e.target.value)}
-                      className={`min-w-0 flex-1 rounded-xl bg-transparent text-center font-display text-[80px] font-extrabold leading-[1.05] tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
+                      className={`mt-1 w-full min-w-0 rounded-xl bg-transparent text-center font-display text-[68px] font-extrabold leading-[1.05] tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
                     />
-                    <button
-                      type="button"
-                      aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
-                      onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
-                      className="flex h-14 w-14 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[28px] leading-none text-ink active:scale-95"
-                    >
-                      +
-                    </button>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
+                        onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
+                        className="flex h-14 flex-1 items-center justify-center rounded-2xl border border-line-strong bg-inset text-[30px] leading-none text-ink active:scale-95"
+                      >
+                        &minus;
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
+                        onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
+                        className="flex h-14 flex-1 items-center justify-center rounded-2xl border border-line-strong bg-inset text-[30px] leading-none text-ink active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ) : allDone ? (
             <div className="card flex flex-col items-center gap-1.5 px-4 py-5 text-center">
