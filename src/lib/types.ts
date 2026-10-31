@@ -3,6 +3,8 @@ export type ProgramExercise = {
   order_index: number
   target_sets: number | null
   target_reps: string | null
+  // Prescribed RPE as text, e.g. "9-10" or "7-8". Optional: older programs have none.
+  target_rpe?: string | null
   notes: string | null
 }
 

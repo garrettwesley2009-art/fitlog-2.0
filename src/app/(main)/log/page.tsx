@@ -154,6 +154,7 @@ export default async function LogPage() {
             exercise_name: e.exercise_name,
             target_sets: e.target_sets,
             target_reps: e.target_reps,
+            target_rpe: e.target_rpe,
             notes: e.notes,
           })),
         }
@@ -196,6 +197,7 @@ export default async function LogPage() {
               exercise_name: e.exercise_name,
               target_sets: e.target_sets,
               target_reps: e.target_reps,
+              target_rpe: e.target_rpe,
               notes: e.notes,
             })),
           })),

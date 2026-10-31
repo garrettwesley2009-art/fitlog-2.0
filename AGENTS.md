@@ -34,6 +34,10 @@ A `'use server'` file may only export async functions.
   Keep saving, editing, the outbox and rest timer working when you change how it looks.
 - The current program day is derived, not stored: `getProgramPosition` in `src/lib/data.ts`.
 - `target_reps` is text like `8/8/6/6F` (per set, F = to failure), parsed by `src/lib/log-plan.ts`.
+- The head coach's rules: each program exercise has an optional `target_rpe` text ("9-10", "7-8").
+  `src/lib/progression.ts` works out today's weight and reps from last time (no AI call);
+  `src/lib/coach-checks.ts` shows rule warnings on the Build page; the AI Coach gets the same rules
+  in `src/lib/coach-guidelines.ts`. Keep the three in step when the coach changes a rule.
 - Sign-in check: use `getUserCached()` from `src/lib/supabase/get-user.ts`. Do not call
   `supabase.auth.getUser()` directly in pages; it adds a network call per page.
 - Every page under `(main)` shows a skeleton from `loading.tsx` while data loads. Keep it.

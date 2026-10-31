@@ -25,7 +25,7 @@ export default async function EditTemplateCopyPage({
   const { data: days } = await supabase
     .from('template_days')
     .select(
-      'day_label, order_index, template_exercises(order_index, target_sets, target_reps, notes, exercises(name))'
+      'day_label, order_index, template_exercises(order_index, target_sets, target_reps, target_rpe, notes, exercises(name))'
     )
     .eq('template_id', id)
     .order('order_index', { ascending: true })
@@ -48,6 +48,7 @@ export default async function EditTemplateCopyPage({
             order_index: j,
             target_sets: ex.target_sets ?? null,
             target_reps: ex.target_reps ?? null,
+            target_rpe: ex.target_rpe ?? null,
             notes: ex.notes ?? null,
           }
         })

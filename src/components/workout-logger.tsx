@@ -17,6 +17,7 @@ import {
   estimateMax,
   complexParts,
 } from '@/lib/log-plan'
+import { nextTarget, toPrescription, RPE_CHOICES, type NextTarget, type Prescription } from '@/lib/progression'
 
 // ---------------------------------------------------------------------------
 // Types shared with the Log page (page.tsx)
@@ -25,6 +26,8 @@ export type PlanExercise = {
   exercise_name: string
   target_sets: number | null
   target_reps: string | null
+  // Prescribed RPE as text ("9-10"). Older programs have none.
+  target_rpe?: string | null
   notes: string | null
 }
 
@@ -85,6 +88,8 @@ type SetState = {
   auto: boolean // weight was filled in from a percent of the saved max
   done: boolean
   touchedWeight: boolean
+  // How hard the set was, RPE 6-10 (10 = no reps left). Null until picked.
+  rpe: number | null
   // Logged in this session at a heavier weight than any earlier workout (shown in gold).
   pr?: boolean
 }
@@ -101,6 +106,10 @@ type ExState = {
   plan: PlanExercise
   sets: SetState[]
   rests: number[]
+  // The head coach's progression rules for this exercise (null for percent or per-set plans).
+  presc: Prescription | null
+  // What the rules say to do today, worked out from last time (null when there is no plan for it).
+  coach: NextTarget | null
   status: 'active' | 'done' | 'skipped'
   effort: number | null
   note: string
@@ -187,6 +196,9 @@ function buildExercises(
     const goals = parseSetGoals(plan.target_reps, plan.target_sets)
     const basisMax = swap ? undefined : maxes[maxBasis(plan.exercise_name, plan.notes).toLowerCase()]
     const last = lastTime[name] ?? lastTime[plan.exercise_name]
+    // Progressive overload: today's weight and reps from last time, by the head coach's rules.
+    const presc = swap ? null : toPrescription(plan.target_sets, plan.target_reps, plan.target_rpe ?? null, plan.notes)
+    const coach = presc ? nextTarget(presc, last?.sets) : null
     const mine = logged.filter((s) => s.exercise_name === name)
     const byIndex = new Map(mine.map((s) => [s.set_index, s] as const))
     const count = Math.max(goals.length, 1, ...mine.map((s) => s.set_index))
@@ -206,6 +218,7 @@ function buildExercises(
           auto: false,
           done: true,
           touchedWeight: true,
+          rpe: done.rpe ?? null,
         })
         continue
       }
@@ -213,14 +226,18 @@ function buildExercises(
       const prev = last ? (last.sets[i] ?? last.sets[last.sets.length - 1]) : undefined
       // A percent plus a saved max beats last time's weight: the plan says what to lift.
       const tw = targetWeight(basisMax, goals[i]?.percent ?? null, step)
+      // The coach's target wins over a plain copy of last time (but not over a percent of max).
+      const coachReps = coach && coach.reason !== 'first-time' ? coach.reps[i] : undefined
+      const coachWeight = coach && coach.weight != null ? coach.weight : undefined
       sets.push({
-        reps: numStr(goals[i]?.reps ?? prev?.reps),
-        weight: tw ? String(tw.low) : carryWeight || numStr(prev?.weight),
+        reps: numStr(coachReps ?? goals[i]?.reps ?? prev?.reps),
+        weight: tw ? String(tw.low) : carryWeight || numStr(coachWeight ?? prev?.weight),
         toFailure: Boolean(goals[i]?.toFailure),
         percent: goals[i]?.percent ?? null,
         auto: Boolean(tw),
         done: false,
         touchedWeight: false,
+        rpe: null,
       })
     }
 
@@ -231,6 +248,8 @@ function buildExercises(
       plan,
       sets,
       rests: parseRests(plan.notes, count),
+      presc,
+      coach,
       status: fb?.status === 'skipped' ? 'skipped' : fb ? 'done' : 'active',
       effort: fb?.effort ?? null,
       note: fb?.note ?? '',
@@ -326,7 +345,9 @@ export function WorkoutLogger({
           const i = o.setIndex - 1
           if (i >= 0 && i < sets.length) {
             sets = sets.map((x, n) =>
-              n === i ? { ...x, reps: String(o.reps), weight: String(o.weight), done: true, touchedWeight: true } : x
+              n === i
+                ? { ...x, reps: String(o.reps), weight: String(o.weight), rpe: o.rpe ?? x.rpe, done: true, touchedWeight: true }
+                : x
             )
           }
         }
@@ -468,6 +489,13 @@ export function WorkoutLogger({
     setField(setIndex, field, String(Math.max(0, current + delta)))
   }
 
+  function setRpe(setIndex: number, rpe: number) {
+    updateEx(idx, (e) => ({
+      ...e,
+      sets: e.sets.map((s, n) => (n === setIndex ? { ...s, rpe: s.rpe === rpe ? null : rpe } : s)),
+    }))
+  }
+
   function currentSetIndex(e: ExState): number {
     if (editing !== null) return editing
     return e.sets.findIndex((s) => !s.done)
@@ -497,6 +525,7 @@ export function WorkoutLogger({
       setIndex: ci + 1,
       weight: set.weight.trim() === '' ? 0 : Number(set.weight),
       reps: Number(set.reps),
+      rpe: set.rpe,
     })
     void flush()
     {
@@ -549,7 +578,7 @@ export function WorkoutLogger({
         ...e,
         sets: [
           ...e.sets,
-          { reps: last.reps, weight: last.weight, toFailure: false, percent: last.percent, auto: last.auto, done: false, touchedWeight: false },
+          { reps: last.reps, weight: last.weight, toFailure: false, percent: last.percent, auto: last.auto, done: false, touchedWeight: false, rpe: null },
         ],
         rests: [...e.rests.slice(0, -1), e.rests[e.rests.length - 2] ?? 90, 0].slice(0, e.sets.length + 1),
       }
@@ -756,7 +785,10 @@ export function WorkoutLogger({
       ...e,
       name: newName,
       swappedFrom: e.swappedFrom ?? e.name,
-      sets: e.sets.map((s) => ({ ...s, done: false, touchedWeight: false, auto: false, weight: '' })),
+      // Last time's numbers belonged to the old exercise, so the coach's target no longer applies.
+      presc: null,
+      coach: null,
+      sets: e.sets.map((s) => ({ ...s, done: false, touchedWeight: false, auto: false, weight: '', rpe: null })),
     }))
     setReplaceText('')
     setSheet(null)
@@ -1069,6 +1101,12 @@ export function WorkoutLogger({
                 <span className="font-semibold">
                   {current.plan.target_sets ?? current.sets.length} sets
                   {current.plan.target_reps ? ` · ${current.plan.target_reps}` : ''}
+                  {current.presc && (
+                    <span className="text-accent-text">
+                      {' '}
+                      @ RPE {current.presc.rpeLow === current.presc.rpeHigh ? current.presc.rpeLow : `${current.presc.rpeLow}-${current.presc.rpeHigh}`}
+                    </span>
+                  )}
                 </span>
               )}
               <span className="text-muted">
@@ -1109,6 +1147,30 @@ export function WorkoutLogger({
                   <p>Best is the heaviest weight you have logged for it. Beat it and you get a gold PR.</p>
                 </HelpTip>
               </p>
+            )}
+            {current.coach && (
+              <div className="mt-1 rounded-xl border border-line border-l-[3px] border-l-insight bg-surface px-3 py-2" data-x="LOG-COACH">
+                <p className="flex items-center gap-1.5 text-[15px] font-bold text-insight">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M3 17l6-6 4 4 8-8" />
+                    <path d="M14 7h7v7" />
+                  </svg>
+                  Coach: {current.coach.headline}
+                  <HelpTip title="How the coach picks today's numbers">
+                    <p>
+                      <b className="text-ink">Muscle work (RPE 9-10):</b> same weight and one more rep on each set every
+                      week. When every set reaches the top of the range, add 5 lb and start back at the bottom.
+                    </p>
+                    <p>
+                      <b className="text-ink">Strength work (RPE 7-8):</b> add 5 lb each week while your RPE stays in
+                      range. If it climbs higher, keep the weight until it comes back down.
+                    </p>
+                    <p>Log the RPE of each set so the app can tell how hard it really was.</p>
+                  </HelpTip>
+                </p>
+                <p className="text-[15px] text-ink">{current.coach.detail}</p>
+                {current.coach.tip && <p className="text-sm text-muted">{current.coach.tip}</p>}
+              </div>
             )}
             {current.swappedFrom && <p className="text-sm text-accent-text">Swapped in for {current.swappedFrom}</p>}
             {planHasPercent && basisMax && (
@@ -1281,6 +1343,41 @@ export function WorkoutLogger({
                           </button>
                         </div>
                       ))}
+                      <fieldset className="mt-3">
+                        <legend className="label-caps mb-1.5 flex w-full items-center justify-between">
+                          <span>How hard? RPE</span>
+                          {current.presc && (
+                            <span className="normal-case tracking-normal text-insight">
+                              Target {current.presc.rpeLow === current.presc.rpeHigh ? current.presc.rpeLow : `${current.presc.rpeLow}-${current.presc.rpeHigh}`}
+                            </span>
+                          )}
+                        </legend>
+                        <div className="grid grid-cols-5 gap-2">
+                          {RPE_CHOICES.map(({ rpe, left }) => {
+                            const on = nextSet.rpe === rpe
+                            const inTarget = current.presc ? rpe >= current.presc.rpeLow && rpe <= current.presc.rpeHigh : false
+                            return (
+                              <button
+                                key={rpe}
+                                type="button"
+                                aria-pressed={on}
+                                aria-label={`RPE ${rpe}, ${left} ${left === 1 ? 'rep' : 'reps'} left${inTarget ? ', the target' : ''}`}
+                                onClick={() => setRpe(ci, rpe)}
+                                className={`flex min-h-14 flex-col items-center justify-center rounded-xl border leading-tight transition-transform active:scale-[0.97] ${
+                                  on
+                                    ? 'border-accent bg-accent text-white'
+                                    : inTarget
+                                      ? 'border-insight bg-inset text-ink'
+                                      : 'border-line-strong bg-inset text-ink'
+                                }`}
+                              >
+                                <span className="font-display text-[22px] font-bold tabular">{rpe}</span>
+                                <span className={`text-[12px] ${on ? 'text-white' : 'text-muted'}`}>{left} left</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </fieldset>
                       <button
                         type="button"
                         disabled={busy}
@@ -1319,7 +1416,7 @@ export function WorkoutLogger({
                           startNextSet()
                           setEditing(i)
                         }}
-                        aria-label={`Set ${i + 1}: ${st.weight || 0} pounds for ${st.reps} reps${st.pr ? ', personal record' : ''}. Tap to edit.`}
+                        aria-label={`Set ${i + 1}: ${st.weight || 0} pounds for ${st.reps} reps${st.rpe != null ? ` at RPE ${st.rpe}` : ''}${st.pr ? ', personal record' : ''}. Tap to edit.`}
                         className="flex min-h-12 w-full items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-left"
                       >
                         <span
@@ -1337,6 +1434,7 @@ export function WorkoutLogger({
                         <span className="text-[15px] text-muted">{st.pr ? `Set ${i + 1} · PR` : `Set ${i + 1}`}</span>
                         <span className={`ml-auto font-display text-[19px] font-bold tabular ${st.pr ? 'text-record' : 'text-ink'}`}>
                           {st.weight || 0} × {st.reps}
+                          {st.rpe != null && <span className="ml-1.5 font-sans text-sm font-semibold text-muted">RPE {st.rpe}</span>}
                         </span>
                       </button>
                     </li>

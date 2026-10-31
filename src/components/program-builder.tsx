@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ProgramDraft, ProgramDay, ProgramExercise } from '@/lib/types'
+import { exerciseIssues, progressionHint } from '@/lib/coach-checks'
 
 function newExercise(name: string, orderIndex: number): ProgramExercise {
-  return { exercise_name: name, order_index: orderIndex, target_sets: 3, target_reps: '10', notes: null }
+  return { exercise_name: name, order_index: orderIndex, target_sets: 3, target_reps: '8-12', target_rpe: '9-10', notes: null }
 }
 
 function emptyDay(orderIndex: number): ProgramDay {
@@ -320,7 +321,38 @@ export function ProgramBuilder({ initial, programId }: { initial?: ProgramDraft;
                     className="w-full min-w-0 bg-transparent py-1.5 text-right font-bold italic text-ink outline-none"
                   />
                 </div>
+
+                <div className="col-span-2 flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-1.5">
+                  <label htmlFor={`rpe-${dayIndex}-${exIndex}`} className="text-xs uppercase tracking-wide text-muted">
+                    Target RPE
+                  </label>
+                  <input
+                    id={`rpe-${dayIndex}-${exIndex}`}
+                    value={ex.target_rpe ?? ''}
+                    onChange={(e) => updateExercise(dayIndex, exIndex, { target_rpe: e.target.value })}
+                    placeholder="9-10"
+                    inputMode="text"
+                    className="w-full min-w-0 bg-transparent py-1.5 text-right font-bold italic text-ink outline-none"
+                  />
+                </div>
               </div>
+
+              {(() => {
+                const hint = progressionHint(ex)
+                const issues = exerciseIssues(ex)
+                if (!hint && issues.length === 0) return null
+                return (
+                  <div className="mt-2 space-y-0.5 text-[13px]">
+                    {hint && <p className="text-insight">Progression: {hint}</p>}
+                    {issues.map((issue) => (
+                      <p key={issue} className="flex gap-1.5 text-streak">
+                        <span aria-hidden="true">!</span>
+                        <span>Coach: {issue}</span>
+                      </p>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           ))}
 

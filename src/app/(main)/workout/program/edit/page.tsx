@@ -28,6 +28,7 @@ export default async function EditCurrentProgramPage() {
         order_index: j,
         target_sets: e.target_sets,
         target_reps: e.target_reps,
+        target_rpe: e.target_rpe,
         notes: e.notes,
       })),
     })),
@@ -39,7 +40,7 @@ export default async function EditCurrentProgramPage() {
       <div>
         <h1 className="font-display text-[34px] font-extrabold text-ink">Edit your program</h1>
         <p className="mt-1 text-sm text-muted">
-          Change exercises, sets, reps, notes, day names or the length. Your progress is kept. Days you have
+          Change exercises, sets, reps, RPE, notes, day names or the length. Your progress is kept. Days you have
           already trained can&apos;t be removed, and a day you add shows up in the weeks still ahead.
         </p>
       </div>

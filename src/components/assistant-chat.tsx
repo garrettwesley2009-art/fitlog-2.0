@@ -58,6 +58,7 @@ function DraftCard({
                   <li key={ex.order_index}>
                     {ex.exercise_name}
                     {ex.target_sets && ex.target_reps ? ` - ${ex.target_sets} x ${ex.target_reps}` : ''}
+                    {ex.target_rpe ? ` @ RPE ${ex.target_rpe}` : ''}
                     {ex.notes ? ` (${ex.notes})` : ''}
                   </li>
                 ))}

@@ -57,9 +57,13 @@ const PROPOSE_PROGRAM_TOOL = {
                     type: 'string',
                     description: 'Text like "8", "8-10", or "8/8/6/6F". With a slash list, target_sets equals the number of numbers.',
                   },
+                  target_rpe: {
+                    type: 'string',
+                    description: 'Prescribed RPE as text: "9-10" for muscle work, "7-8" for strength, "10" for a max attempt. Empty only for percent work.',
+                  },
                   notes: { type: 'string', description: 'Short cue, load target and "Rest 90 sec". Empty string if none.' },
                 },
-                required: ['exercise_name', 'target_sets', 'target_reps'],
+                required: ['exercise_name', 'target_sets', 'target_reps', 'target_rpe'],
               },
             },
           },
@@ -71,7 +75,7 @@ const PROPOSE_PROGRAM_TOOL = {
   },
 }
 
-type RawExercise = { exercise_name?: unknown; target_sets?: unknown; target_reps?: unknown; notes?: unknown }
+type RawExercise = { exercise_name?: unknown; target_sets?: unknown; target_reps?: unknown; target_rpe?: unknown; notes?: unknown }
 type RawDay = { day_label?: unknown; exercises?: unknown }
 
 // The model's tool input is untrusted: clean it into exactly the ProgramDraft shape.
@@ -89,10 +93,12 @@ function normalizeDraft(input: unknown): ProgramDraft | null {
           const sets = Math.round(Number(e.target_sets))
           const reps = typeof e.target_reps === 'string' ? e.target_reps.trim() : String(e.target_reps ?? '').trim()
           const notes = typeof e.notes === 'string' && e.notes.trim() ? e.notes.trim() : null
+          const rpe = String(e.target_rpe ?? '').trim().replace(/^rpe\s*/i, '')
           return {
             exercise_name,
             target_sets: Number.isFinite(sets) && sets > 0 ? sets : null,
             target_reps: reps || null,
+            target_rpe: rpe || null,
             notes,
           }
         })

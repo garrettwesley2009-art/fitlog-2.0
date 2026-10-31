@@ -10,6 +10,7 @@ export type EditExercise = {
   order_index: number
   target_sets: number | null
   target_reps: string | null
+  target_rpe?: string | null
   notes: string | null
 }
 export type EditDay = { id?: string; day_label: string; order_index: number; exercises: EditExercise[] }
@@ -123,6 +124,7 @@ export async function updateProgramFromDraft(
         order_index: j,
         target_sets: ex.target_sets,
         target_reps: ex.target_reps,
+        target_rpe: ex.target_rpe?.trim() || null,
         notes: ex.notes,
       }
 

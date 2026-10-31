@@ -24,7 +24,7 @@ export async function getCurrentProgram(supabase: SupabaseClient, userId: string
   const { data: days } = await supabase
     .from('user_program_days')
     .select(
-      'id, day_label, order_index, user_program_exercises(id, order_index, target_sets, target_reps, notes, exercises(id, name))'
+      'id, day_label, order_index, user_program_exercises(id, order_index, target_sets, target_reps, target_rpe, notes, exercises(id, name))'
     )
     .eq('user_program_id', program.id)
     .order('order_index', { ascending: true })
@@ -38,6 +38,7 @@ export async function getCurrentProgram(supabase: SupabaseClient, userId: string
       order_index: number
       target_sets: number | null
       target_reps: string | null
+      target_rpe: string | null
       notes: string | null
       exercises: { id: string; name: string } | null
     }[]
@@ -55,6 +56,7 @@ export async function getCurrentProgram(supabase: SupabaseClient, userId: string
         exercise_name: e.exercises?.name ?? '(unknown exercise)',
         target_sets: e.target_sets,
         target_reps: e.target_reps,
+        target_rpe: e.target_rpe,
         notes: e.notes,
       })),
   }))
@@ -180,6 +182,7 @@ export async function insertProgramFromDraft(
         order_index: ex.order_index,
         target_sets: ex.target_sets,
         target_reps: ex.target_reps,
+        target_rpe: ex.target_rpe ?? null,
         notes: ex.notes,
       })
     }

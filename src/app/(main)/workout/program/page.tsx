@@ -115,6 +115,9 @@ export default async function MyProgramPage() {
                     {ex.target_sets && ex.target_reps && (
                       <span className="flex-none font-display text-lg font-bold tabular text-ink">
                         {ex.target_sets} × {ex.target_reps}
+                        {ex.target_rpe && (
+                          <span className="ml-1.5 font-sans text-sm font-semibold text-muted">RPE {ex.target_rpe}</span>
+                        )}
                       </span>
                     )}
                   </li>

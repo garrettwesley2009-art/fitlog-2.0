@@ -26,7 +26,7 @@ export async function createProgramFromTemplate(formData: FormData) {
   const { data: templateDays } = await supabase
     .from('template_days')
     .select(
-      'id, day_label, order_index, template_exercises(exercise_id, order_index, target_sets, target_reps, notes)'
+      'id, day_label, order_index, template_exercises(exercise_id, order_index, target_sets, target_reps, target_rpe, notes)'
     )
     .eq('template_id', templateId)
     .order('order_index', { ascending: true })
@@ -64,6 +64,7 @@ export async function createProgramFromTemplate(formData: FormData) {
       order_index: e.order_index,
       target_sets: e.target_sets,
       target_reps: e.target_reps,
+      target_rpe: e.target_rpe,
       notes: e.notes,
     }))
 

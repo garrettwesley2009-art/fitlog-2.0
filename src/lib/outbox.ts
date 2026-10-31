@@ -26,6 +26,8 @@ export type SetOp = {
   setIndex: number
   weight: number
   reps: number
+  // How hard the set was (RPE 6-10), or null when not picked. Older queued items have none.
+  rpe?: number | null
 }
 export type FeedbackOp = {
   type: 'feedback'
@@ -237,7 +239,7 @@ async function runQueue(): Promise<void> {
               setIndex: op.setIndex,
               weight: op.weight,
               reps: op.reps,
-              rpe: null,
+              rpe: op.rpe ?? null,
               notes: null,
             }),
           })
