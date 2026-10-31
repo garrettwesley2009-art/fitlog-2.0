@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveProfileFields, type ProfilePatch } from '@/app/actions/profile'
+import { AVOID_MOVES, FOCUS_MUSCLES, SEASONS, SESSION_MINUTES, SPORTS, WEEKDAYS } from '@/lib/profile-progress'
 
 const GOALS = ['Get stronger', 'Build muscle', 'Lose fat', 'Athletic performance', 'Stay consistent']
 const EQUIPMENT = ['Full gym', 'Barbell and rack', 'Dumbbells', 'Kettlebells', 'Bands or bodyweight only']
@@ -19,6 +20,15 @@ export type ProfileValues = {
   heightIn: string
   weightLb: string
   limits: string
+  trainDays: string[]
+  sessionMinutes: number | null
+  focusMuscles: string[]
+  avoidMoves: string[]
+  likes: string
+  dislikes: string
+  sport: string | null
+  sportSeason: string | null
+  eventDate: string
 }
 
 type Step = {
@@ -69,6 +79,20 @@ const STEPS: Step[] = [
     patch: (v) => ({ days: v.days }),
   },
   {
+    id: 'weekdays',
+    title: 'Which days can you train?',
+    hint: 'Your usual days, so hard days are spread out. Optional.',
+    answered: (v) => v.trainDays.length > 0,
+    patch: (v) => ({ trainDays: v.trainDays }),
+  },
+  {
+    id: 'session',
+    title: 'How long can a workout be?',
+    hint: 'On most days, warm-up included. Optional.',
+    answered: (v) => v.sessionMinutes != null,
+    patch: (v) => ({ sessionMinutes: v.sessionMinutes }),
+  },
+  {
     id: 'experience',
     title: 'How much lifting experience do you have?',
     hint: 'Be honest, there is no wrong answer.',
@@ -81,6 +105,13 @@ const STEPS: Step[] = [
     hint: 'Pick all that apply.',
     answered: (v) => v.equipment.length > 0,
     patch: (v) => ({ equipment: v.equipment }),
+  },
+  {
+    id: 'focus',
+    title: 'Any muscles you most want to grow?',
+    hint: 'Pick up to 3. They get extra sets each week. Optional.',
+    answered: (v) => v.focusMuscles.length > 0,
+    patch: (v) => ({ focusMuscles: v.focusMuscles }),
   },
   {
     id: 'height',
@@ -97,11 +128,32 @@ const STEPS: Step[] = [
     patch: (v) => ({ weightLb: v.weightLb }),
   },
   {
+    id: 'avoid',
+    title: 'Does anything hurt or bother you?',
+    hint: 'Pick any movements to keep out of your programs. Optional.',
+    answered: (v) => v.avoidMoves.length > 0,
+    patch: (v) => ({ avoidMoves: v.avoidMoves }),
+  },
+  {
     id: 'limits',
     title: 'Any injuries or limits?',
-    hint: 'Anything we should work around. Optional.',
+    hint: 'Anything else we should work around. Optional.',
     answered: () => false,
     patch: (v) => ({ limits: v.limits }),
+  },
+  {
+    id: 'favorites',
+    title: 'Any exercises you love or hate?',
+    hint: 'The Coach uses the ones you like and leaves out the ones you don\u2019t. Optional.',
+    answered: (v) => v.likes.trim() !== '' || v.dislikes.trim() !== '',
+    patch: (v) => ({ likes: v.likes, dislikes: v.dislikes }),
+  },
+  {
+    id: 'sport',
+    title: 'Do you play a sport or have a meet coming up?',
+    hint: 'Programs change with the season. Optional.',
+    answered: (v) => v.sport != null,
+    patch: (v) => ({ sport: v.sport, sportSeason: v.sportSeason, eventDate: v.eventDate }),
   },
 ]
 
@@ -127,7 +179,21 @@ function Summary({ v }: { v: ProfileValues }) {
     ['Equipment', v.equipment.join(', ')],
     ['Height', v.heightFt ? `${v.heightFt} ft ${v.heightIn || 0} in` : ''],
     ['Weight', v.weightLb ? `${v.weightLb} lb` : ''],
+    ['Training days', v.trainDays.join(', ')],
+    ['Workout length', v.sessionMinutes ? `${v.sessionMinutes} min` : ''],
+    ['Focus', v.focusMuscles.join(', ')],
+    ['Avoid', v.avoidMoves.join(', ')],
     ['Limits', v.limits],
+    ['Likes', v.likes],
+    ['Dislikes', v.dislikes],
+    [
+      'Sport',
+      v.sport
+        ? [v.sport, SEASONS.find((x) => x.id === v.sportSeason)?.label, v.eventDate ? `next date ${v.eventDate}` : '']
+            .filter(Boolean)
+            .join(', ')
+        : '',
+    ],
   ]
   return (
     <dl className="mt-4 text-left text-sm">
@@ -225,7 +291,7 @@ export function ProfileSetup({
 
       {open && (
         <div className="fixed inset-0 z-[85] flex flex-col bg-canvas px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-          <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
+          <div className="mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -248,7 +314,7 @@ export function ProfileSetup({
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto pt-6">
+            <div className="min-h-0 flex-1 overflow-y-auto pt-6">
               {finished || !s ? (
                 <div className="text-center">
                   <div className="text-5xl" aria-hidden="true">
@@ -338,6 +404,150 @@ export function ProfileSetup({
                           {d}
                         </button>
                       ))}
+                    </div>
+                  )}
+
+                  {s.id === 'weekdays' && (
+                    <div className="mt-5 flex flex-wrap gap-2.5">
+                      {WEEKDAYS.map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          aria-pressed={v.trainDays.includes(d)}
+                          onClick={() => set('trainDays', toggle(v.trainDays, d))}
+                          className={`h-14 w-14 rounded-full border text-base font-semibold ${
+                            v.trainDays.includes(d) ? 'border-accent bg-accent text-ink' : 'border-line text-muted'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {s.id === 'session' && (
+                    <div className="mt-5 flex flex-wrap gap-2.5">
+                      {SESSION_MINUTES.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          aria-pressed={v.sessionMinutes === m}
+                          onClick={() => set('sessionMinutes', v.sessionMinutes === m ? null : m)}
+                          className={chip(v.sessionMinutes === m)}
+                        >
+                          {m === 90 ? '90+ min' : `${m} min`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {s.id === 'focus' && (
+                    <div className="mt-5 flex flex-wrap gap-2.5">
+                      {FOCUS_MUSCLES.map((m) => {
+                        const on = v.focusMuscles.includes(m)
+                        const full = !on && v.focusMuscles.length >= 3
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            aria-pressed={on}
+                            disabled={full}
+                            onClick={() => set('focusMuscles', toggle(v.focusMuscles, m))}
+                            className={`${chip(on)} disabled:opacity-40`}
+                          >
+                            {m}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {s.id === 'avoid' && (
+                    <div className="mt-5 flex flex-wrap gap-2.5">
+                      {AVOID_MOVES.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          aria-pressed={v.avoidMoves.includes(m)}
+                          onClick={() => set('avoidMoves', toggle(v.avoidMoves, m))}
+                          className={chip(v.avoidMoves.includes(m))}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {s.id === 'favorites' && (
+                    <div className="mt-5 space-y-4">
+                      <label className="block text-sm font-semibold text-ink" htmlFor="setup-likes">
+                        Exercises you love
+                        <textarea
+                          id="setup-likes"
+                          className="input-field mt-1.5 min-h-20 text-base font-normal"
+                          maxLength={300}
+                          placeholder="For example incline dumbbell press, hack squat"
+                          value={v.likes}
+                          onChange={(e) => set('likes', e.target.value)}
+                        />
+                      </label>
+                      <label className="block text-sm font-semibold text-ink" htmlFor="setup-dislikes">
+                        Exercises you hate
+                        <textarea
+                          id="setup-dislikes"
+                          className="input-field mt-1.5 min-h-20 text-base font-normal"
+                          maxLength={300}
+                          placeholder="For example lunges, burpees"
+                          value={v.dislikes}
+                          onChange={(e) => set('dislikes', e.target.value)}
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {s.id === 'sport' && (
+                    <div className="mt-5 space-y-5">
+                      <div className="flex flex-wrap gap-2.5">
+                        {SPORTS.map((sp) => (
+                          <button
+                            key={sp}
+                            type="button"
+                            aria-pressed={v.sport === sp}
+                            onClick={() => set('sport', v.sport === sp ? null : sp)}
+                            className={chip(v.sport === sp)}
+                          >
+                            {sp}
+                          </button>
+                        ))}
+                      </div>
+                      {v.sport && (
+                        <>
+                          <div>
+                            <p className="text-sm font-semibold text-ink">Where are you in the season?</p>
+                            {SEASONS.map((x) => (
+                              <button
+                                key={x.id}
+                                type="button"
+                                aria-pressed={v.sportSeason === x.id}
+                                onClick={() => set('sportSeason', v.sportSeason === x.id ? null : x.id)}
+                                className={option(v.sportSeason === x.id)}
+                              >
+                                {x.label}
+                              </button>
+                            ))}
+                          </div>
+                          <label className="block text-sm font-semibold text-ink" htmlFor="setup-event">
+                            Next season start, big game or meet date (optional)
+                            <input
+                              id="setup-event"
+                              type="date"
+                              className="input-field mt-1.5 text-base font-normal"
+                              value={v.eventDate}
+                              onChange={(e) => set('eventDate', e.target.value)}
+                            />
+                          </label>
+                        </>
+                      )}
                     </div>
                   )}
 

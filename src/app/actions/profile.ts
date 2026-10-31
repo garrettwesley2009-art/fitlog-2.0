@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { AVOID_MOVES, FOCUS_MUSCLES, SEASONS, SESSION_MINUTES, SPORTS, WEEKDAYS } from '@/lib/profile-progress'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -22,6 +23,15 @@ export type ProfilePatch = {
   weightLb?: string
   equipment?: string[]
   limits?: string
+  trainDays?: string[]
+  sessionMinutes?: number | null
+  focusMuscles?: string[]
+  avoidMoves?: string[]
+  likes?: string
+  dislikes?: string
+  sport?: string | null
+  sportSeason?: string | null
+  eventDate?: string // yyyy-mm-dd, or '' to clear
 }
 
 export async function saveProfileFields(patch: ProfilePatch): Promise<Result> {
@@ -108,6 +118,54 @@ export async function saveProfileFields(patch: ProfilePatch): Promise<Result> {
 
   if (patch.limits !== undefined) {
     row.limits = patch.limits.trim().slice(0, 500) || null
+  }
+
+  if (patch.trainDays !== undefined) {
+    // Kept in week order no matter what order they were tapped in.
+    row.train_days = WEEKDAYS.filter((d) => patch.trainDays!.includes(d))
+  }
+
+  if (patch.sessionMinutes !== undefined) {
+    const m = patch.sessionMinutes
+    row.session_minutes = m != null && SESSION_MINUTES.includes(m) ? m : null
+  }
+
+  if (patch.focusMuscles !== undefined) {
+    const picked = FOCUS_MUSCLES.filter((m) => patch.focusMuscles!.includes(m))
+    if (picked.length > 3) return { ok: false, error: 'Pick up to 3.' }
+    row.focus_muscles = picked
+  }
+
+  if (patch.avoidMoves !== undefined) {
+    row.avoid_moves = AVOID_MOVES.filter((m) => patch.avoidMoves!.includes(m))
+  }
+
+  if (patch.likes !== undefined) row.likes = patch.likes.trim().slice(0, 300) || null
+  if (patch.dislikes !== undefined) row.dislikes = patch.dislikes.trim().slice(0, 300) || null
+
+  if (patch.sport !== undefined) {
+    row.sport = patch.sport && SPORTS.includes(patch.sport) ? patch.sport : null
+    if (!row.sport) {
+      row.sport_season = null
+      row.event_date = null
+    }
+  }
+
+  if (patch.sportSeason !== undefined && row.sport !== null) {
+    row.sport_season = patch.sportSeason && SEASONS.some((x) => x.id === patch.sportSeason) ? patch.sportSeason : null
+  }
+
+  if (patch.eventDate !== undefined && row.sport !== null) {
+    if (patch.eventDate === '') row.event_date = null
+    else {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(patch.eventDate)
+      const t = m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN
+      const now = Date.now()
+      if (!Number.isFinite(t) || t < now - 366 * 86_400_000 || t > now + 2 * 366 * 86_400_000) {
+        return { ok: false, error: 'Pick a date within the next two years.' }
+      }
+      row.event_date = patch.eventDate
+    }
   }
 
   const { error } = await supabase.from('profiles').upsert(row)

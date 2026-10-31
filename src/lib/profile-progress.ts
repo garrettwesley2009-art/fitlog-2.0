@@ -10,10 +10,40 @@ export type ProfileFields = {
   weightLb: number | null
   equipment: string[] | null
   limits: string | null
+  // Extra coaching answers (all optional, not counted in the progress percent).
+  trainDays: string[] | null
+  sessionMinutes: number | null
+  focusMuscles: string[] | null
+  avoidMoves: string[] | null
+  likes: string | null
+  dislikes: string | null
+  sport: string | null
+  sportSeason: string | null
+  eventDate: string | null // yyyy-mm-dd
 }
 
+// Choices for the coaching questions, shared by the setup screens and the save action.
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+export const SESSION_MINUTES = [30, 45, 60, 75, 90]
+export const FOCUS_MUSCLES = ['Chest', 'Back', 'Shoulders', 'Arms', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs']
+export const AVOID_MOVES = [
+  'Overhead pressing',
+  'Bench press and push-ups',
+  'Deep squats',
+  'Lunges and single-leg work',
+  'Deadlifts and heavy back loading',
+  'Pull-ups and hanging',
+  'Jumping and running',
+]
+export const SPORTS = ['Baseball', 'Softball', 'Football', 'Basketball', 'Soccer', 'Wrestling', 'Powerlifting meet', 'Weightlifting meet', 'Other']
+export const SEASONS: { id: string; label: string }[] = [
+  { id: 'off', label: 'Off-season' },
+  { id: 'pre', label: 'Pre-season' },
+  { id: 'in', label: 'In-season' },
+]
+
 export const PROFILE_COLUMNS =
-  'display_name, goals, days_per_week, experience, birth_date, gender, height_in, weight_lb, equipment, limits'
+  'display_name, goals, days_per_week, experience, birth_date, gender, height_in, weight_lb, equipment, limits, train_days, session_minutes, focus_muscles, avoid_moves, likes, dislikes, sport, sport_season, event_date'
 
 // Turns a profiles row into ProfileFields (numeric columns can arrive as strings).
 export function fromRow(row: Record<string, unknown> | null | undefined, fallbackName = ''): ProfileFields {
@@ -30,6 +60,15 @@ export function fromRow(row: Record<string, unknown> | null | undefined, fallbac
     weightLb: num(row?.weight_lb),
     equipment: (row?.equipment as string[] | null | undefined) ?? [],
     limits: (row?.limits as string | null | undefined) ?? null,
+    trainDays: (row?.train_days as string[] | null | undefined) ?? [],
+    sessionMinutes: num(row?.session_minutes),
+    focusMuscles: (row?.focus_muscles as string[] | null | undefined) ?? [],
+    avoidMoves: (row?.avoid_moves as string[] | null | undefined) ?? [],
+    likes: (row?.likes as string | null | undefined) ?? null,
+    dislikes: (row?.dislikes as string | null | undefined) ?? null,
+    sport: (row?.sport as string | null | undefined) ?? null,
+    sportSeason: (row?.sport_season as string | null | undefined) ?? null,
+    eventDate: (row?.event_date as string | null | undefined) ?? null,
   }
 }
 
@@ -83,6 +122,17 @@ export function profileSummary(p: ProfileFields): string {
   if (p.heightIn != null) lines.push(`Height: ${Math.floor(p.heightIn / 12)} ft ${Math.round(p.heightIn % 12)} in`)
   if (p.weightLb != null) lines.push(`Body weight: ${p.weightLb} lb`)
   if (p.equipment && p.equipment.length) lines.push(`Equipment: ${p.equipment.join(', ')}`)
+  if (p.trainDays && p.trainDays.length) lines.push(`Can train on: ${p.trainDays.join(', ')}`)
+  if (p.sessionMinutes != null) lines.push(`Session length: about ${p.sessionMinutes} minutes`)
+  if (p.focusMuscles && p.focusMuscles.length) lines.push(`Muscles they most want to grow: ${p.focusMuscles.join(', ')}`)
+  if (p.avoidMoves && p.avoidMoves.length) lines.push(`Movements that hurt or bother them (avoid or swap): ${p.avoidMoves.join(', ')}`)
   if (p.limits && p.limits.trim()) lines.push(`Injuries or limits to work around: ${p.limits.trim()}`)
+  if (p.likes && p.likes.trim()) lines.push(`Exercises they enjoy (use them when they fit): ${p.likes.trim()}`)
+  if (p.dislikes && p.dislikes.trim()) lines.push(`Exercises they dislike (leave out unless essential): ${p.dislikes.trim()}`)
+  if (p.sport) {
+    const season = SEASONS.find((x) => x.id === p.sportSeason)?.label
+    lines.push(`Sport or event: ${p.sport}${season ? `, currently ${season.toLowerCase()}` : ''}`)
+  }
+  if (p.eventDate) lines.push(`Next season start, game or meet: ${p.eventDate} (today is ${new Date().toISOString().slice(0, 10)})`)
   return lines.join('\n')
 }

@@ -33,6 +33,15 @@ export async function ProfileEditor() {
           heightIn: inches != null ? String(inches) : '',
           weightLb: p.weightLb != null ? String(p.weightLb) : '',
           limits: p.limits ?? '',
+          trainDays: p.trainDays ?? [],
+          sessionMinutes: p.sessionMinutes,
+          focusMuscles: p.focusMuscles ?? [],
+          avoidMoves: p.avoidMoves ?? [],
+          likes: p.likes ?? '',
+          dislikes: p.dislikes ?? '',
+          sport: p.sport,
+          sportSeason: p.sportSeason,
+          eventDate: p.eventDate ?? '',
         }}
       />
     </div>
