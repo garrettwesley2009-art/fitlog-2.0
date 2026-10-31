@@ -123,6 +123,11 @@ const REST_PREF_KEY = 'fitlog.restTimer'
 const STEP_PREF_KEY = 'fitlog.weightStep'
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
+// The coach notes stay folded away unless the coach changed the workout: a new weight or a deload.
+function coachAutoOpen(e: { coach: NextTarget | null; insight: Insight | null }): boolean {
+  return e.coach?.reason === 'add-weight' || e.coach?.reason === 'too-heavy' || e.insight?.kind === 'deload'
+}
+
 function numStr(n: number | null | undefined) {
   return n == null ? '' : String(n)
 }
@@ -331,6 +336,8 @@ export function WorkoutLogger({
   const [restLeft, setRestLeft] = useState(0)
   const [restTotal, setRestTotal] = useState(0)
   const [prNote, setPrNote] = useState<PrNote | null>(null)
+  // Coach notes the person opened or closed by hand, by exercise.
+  const [coachOpen, setCoachOpen] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1157,43 +1164,65 @@ export function WorkoutLogger({
                 </HelpTip>
               </p>
             )}
-            {current.coach && (
-              <div className="mt-1 rounded-xl border border-line border-l-[3px] border-l-insight bg-surface px-3 py-2" data-x="LOG-COACH">
-                <p className="flex items-center gap-1.5 text-[15px] font-bold text-insight">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M3 17l6-6 4 4 8-8" />
-                    <path d="M14 7h7v7" />
-                  </svg>
-                  Coach: {current.coach.headline}
-                  <HelpTip title="How the coach picks today's numbers">
-                    <p>
-                      <b className="text-ink">Muscle work (RPE 9-10):</b> same weight and one more rep on each set every
-                      week. When every set reaches the top of the range, add 5 lb and start back at the bottom.
-                    </p>
-                    <p>
-                      <b className="text-ink">Strength work (RPE 7-8):</b> add 5 lb each week while your RPE stays in
-                      range. If it climbs higher, keep the weight until it comes back down.
-                    </p>
-                    <p>Log the RPE of each set so the app can tell how hard it really was.</p>
-                  </HelpTip>
-                </p>
-                <p className="text-[15px] text-ink">{current.coach.detail}</p>
-                {current.coach.tip && <p className="text-sm text-muted">{current.coach.tip}</p>}
-              </div>
-            )}
-            {current.insight && (
-              <div className="mt-1 rounded-xl border border-line border-l-[3px] border-l-insight bg-surface px-3 py-2" data-x="LOG-INSIGHT">
-                <p className="flex items-center gap-1.5 text-[15px] font-bold text-insight">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 8v5M12 16h.01" />
-                  </svg>
-                  {current.insight.kind === 'deload' ? 'Coach: time for a deload' : 'Coach noticed'}
-                </p>
-                <p className="text-[15px] text-ink">{current.insight.text}</p>
-                {current.insight.kind === 'deload' && <p className="text-sm text-muted">{DELOAD_HOW}</p>}
-              </div>
-            )}
+            {(current.coach || current.insight) && (() => {
+              const open = coachOpen[current.key] ?? coachAutoOpen(current)
+              return (
+                <div className="mt-1" data-x="LOG-COACH">
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-controls={`coach-${current.key}`}
+                    onClick={() => setCoachOpen((m) => ({ ...m, [current.key]: !open }))}
+                    className="flex min-h-11 items-center gap-1.5 rounded-full border border-line px-3 text-[15px] font-semibold text-insight"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 17l6-6 4 4 8-8" />
+                      <path d="M14 7h7v7" />
+                    </svg>
+                    {open ? 'Hide coach' : 'Coach'}
+                    {!open && current.insight && (
+                      <span className="rounded-full bg-insight px-1.5 text-[12px] font-bold leading-5 text-canvas">1 note</span>
+                    )}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={open ? 'rotate-180' : ''}>
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {open && (
+                    <div id={`coach-${current.key}`} className="mt-2 space-y-2">
+                      {current.coach && (
+                        <div className="rounded-xl border border-line border-l-[3px] border-l-insight bg-surface px-3 py-2">
+                          <p className="flex items-center gap-1.5 text-[15px] font-bold text-insight">
+                            Coach: {current.coach.headline}
+                            <HelpTip title="How the coach picks today's numbers">
+                              <p>
+                                <b className="text-ink">Muscle work (RPE 9-10):</b> same weight and one more rep on each set
+                                every week. When every set reaches the top of the range, add 5 lb and start back at the bottom.
+                              </p>
+                              <p>
+                                <b className="text-ink">Strength work (RPE 7-8):</b> add 5 lb each week while your RPE stays
+                                in range. If it climbs higher, keep the weight until it comes back down.
+                              </p>
+                              <p>Log the RPE of each set so the app can tell how hard it really was.</p>
+                            </HelpTip>
+                          </p>
+                          <p className="text-[15px] text-ink">{current.coach.detail}</p>
+                          {current.coach.tip && <p className="text-sm text-muted">{current.coach.tip}</p>}
+                        </div>
+                      )}
+                      {current.insight && (
+                        <div className="rounded-xl border border-line border-l-[3px] border-l-insight bg-surface px-3 py-2">
+                          <p className="text-[15px] font-bold text-insight">
+                            {current.insight.kind === 'deload' ? 'Coach: time for a deload' : 'Coach noticed'}
+                          </p>
+                          <p className="text-[15px] text-ink">{current.insight.text}</p>
+                          {current.insight.kind === 'deload' && <p className="text-sm text-muted">{DELOAD_HOW}</p>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
             {current.swappedFrom && <p className="text-sm text-accent-text">Swapped in for {current.swappedFrom}</p>}
             {planHasPercent && basisMax && (
               <p className="text-sm text-muted">
