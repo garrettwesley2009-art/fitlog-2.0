@@ -1,9 +1,6 @@
-import { ComingSoon } from '@/components/coming-soon'
+import { redirect } from 'next/navigation'
 
-export default function UpcomingPage() {
-  return (
-    <ComingSoon title="Upcoming">
-      Your next workouts, in order, will be listed here.
-    </ComingSoon>
-  )
+// PROGRAMS-TAB: the Schedule tab was removed; this old address forwards to the new home.
+export default function Page() {
+  redirect('/workout/program')
 }

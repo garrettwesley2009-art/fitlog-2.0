@@ -5,7 +5,8 @@
 
 export type NavSectionId = 'workout' | 'schedule' | 'home' | 'coach' | 'you'
 
-export type NavSub = { label: string; href: string }
+// PROGRAMS-TAB: "also" lists other addresses that count as this tab (Build counts as Programs).
+export type NavSub = { label: string; href: string; also?: string[] }
 
 export type NavSection = {
   id: NavSectionId
@@ -25,23 +26,12 @@ export const NAV_SECTIONS: NavSection[] = [
     id: 'workout',
     label: 'Workout',
     href: '/log',
-    prefixes: ['/log', '/workout', '/templates', '/programs'],
+    prefixes: ['/log', '/workout', '/templates', '/programs', '/history'],
     subs: [
       { label: 'Log', href: '/log' },
       { label: 'My Program', href: '/workout/program' },
-      { label: 'Discover', href: '/templates' },
-      { label: 'Build', href: '/programs/new' },
-    ],
-  },
-  {
-    id: 'schedule',
-    label: 'Schedule',
-    href: '/schedule',
-    prefixes: ['/schedule', '/history'],
-    subs: [
-      { label: 'Calendar', href: '/schedule' },
-      { label: 'Upcoming', href: '/schedule/upcoming' },
       { label: 'History', href: '/history' },
+      { label: 'Programs', href: '/templates', also: ['/programs'] },
     ],
   },
   {
@@ -91,7 +81,7 @@ export function findSection(pathname: string): NavSection | null {
 export function findActiveSub(section: NavSection, pathname: string): NavSub | null {
   let best: NavSub | null = null
   for (const sub of section.subs) {
-    if (startsWithPath(pathname, sub.href)) {
+    if ([sub.href, ...(sub.also ?? [])].some((h) => startsWithPath(pathname, h))) {
       if (!best || sub.href.length > best.href.length) best = sub
     }
   }

@@ -1,9 +1,6 @@
-import { ComingSoon } from '@/components/coming-soon'
+import { redirect } from 'next/navigation'
 
-export default function CalendarPage() {
-  return (
-    <ComingSoon title="Calendar">
-      See what&apos;s coming up and what you&apos;ve already done, all in one calendar.
-    </ComingSoon>
-  )
+// PROGRAMS-TAB: the Schedule tab was removed; this old address forwards to the new home.
+export default function Page() {
+  redirect('/history')
 }
