@@ -4,6 +4,7 @@ import { anthropic, ASSISTANT_MODEL } from '@/lib/anthropic'
 import { COACH_GUIDELINES } from '@/lib/coach-guidelines'
 import type { ProgramDraft } from '@/lib/types'
 import { fromRow, profileSummary } from '@/lib/profile-progress'
+import { avoidedExercises, trainingSummary, type WorkoutLike } from '@/lib/insights'
 
 // Room for a full multi-day program. The old limit (1500) cut long programs off
 // in the middle of the JSON, which made the coach look like it "only outputs text".
@@ -152,15 +153,50 @@ export async function POST(request: Request) {
 
   await supabase.from('assistant_messages').insert({ user_id: user.id, role: 'user', content: message })
 
-  const [{ data: profile }, { data: exerciseRows }] = await Promise.all([
+  const since = new Date(Date.now() - 42 * 86_400_000).toISOString()
+  const [{ data: profile }, { data: exerciseRows }, { data: workoutRows }, { data: feedbackRows }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     supabase.from('exercises').select('name').order('name', { ascending: true }).limit(MAX_EXERCISE_NAMES),
+    // Their own log, so the Coach can build on what they actually lift.
+    supabase
+      .from('workouts')
+      .select('date, sets(weight, reps, rpe, exercises(name))')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(60),
+    supabase
+      .from('exercise_feedback')
+      .select('exercise_name, status')
+      .eq('user_id', user.id)
+      .in('status', ['skipped', 'swapped'])
+      .gte('created_at', since),
   ])
+
+  type LogRow = {
+    date: string
+    sets: { weight: number | null; reps: number | null; rpe: number | null; exercises: { name: string } | null }[]
+  }
+  const workouts: WorkoutLike[] = ((workoutRows ?? []) as unknown as LogRow[])
+    .filter((w) => (w.sets?.length ?? 0) > 0)
+    .map((w) => ({
+      date: w.date,
+      sets: w.sets.map((x) => ({
+        weight: x.weight == null ? null : Number(x.weight),
+        reps: x.reps,
+        rpe: x.rpe == null ? null : Number(x.rpe),
+        exercise: x.exercises?.name ?? '',
+      })),
+    }))
+  const logSummary = trainingSummary(workouts, avoidedExercises((feedbackRows ?? []) as { exercise_name: string; status: string }[]))
 
   const exerciseList = (exerciseRows ?? []).map((r: { name: string }) => r.name).join('; ')
 
   const contextParts = [
     profileNote(profile as Record<string, unknown> | null),
+    logSummary
+      ? `Their training log (private). Use it for starting weights, to keep lifts that are working, and to replace ones they avoid:\n${logSummary}`
+      : 'No workouts logged yet.',
     programContext
       ? `The program the person is looking at or currently running (for reference):\n${JSON.stringify(programContext)}`
       : '',

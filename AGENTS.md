@@ -38,6 +38,8 @@ A `'use server'` file may only export async functions.
   `src/lib/progression.ts` works out today's weight and reps from last time (no AI call);
   `src/lib/coach-checks.ts` shows rule warnings on the Build page; the AI Coach gets the same rules
   in `src/lib/coach-guidelines.ts`. Keep the three in step when the coach changes a rule.
+- `src/lib/insights.ts` reads the member's own log (stalls, sets far below target RPE, exercises
+  they keep skipping or swapping) for the Log page, the Home coach note and the AI Coach's context.
 - Sign-in check: use `getUserCached()` from `src/lib/supabase/get-user.ts`. Do not call
   `supabase.auth.getUser()` directly in pages; it adds a network call per page.
 - Every page under `(main)` shows a skeleton from `loading.tsx` while data loads. Keep it.

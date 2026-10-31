@@ -136,7 +136,8 @@ export default async function LogPage() {
           }
           if (!lastTime[name]) lastTime[name] = entry // most recent other workout
           const list = history[name] ?? []
-          if (list.length < 3) {
+          // Four earlier workouts: enough to tell if a lift has stalled for three sessions.
+          if (list.length < 4) {
             list.push(entry)
             history[name] = list
           }

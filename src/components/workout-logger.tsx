@@ -18,6 +18,7 @@ import {
   complexParts,
 } from '@/lib/log-plan'
 import { nextTarget, toPrescription, RPE_CHOICES, type NextTarget, type Prescription } from '@/lib/progression'
+import { exerciseInsight, DELOAD_HOW, type Insight } from '@/lib/insights'
 
 // ---------------------------------------------------------------------------
 // Types shared with the Log page (page.tsx)
@@ -110,6 +111,8 @@ type ExState = {
   presc: Prescription | null
   // What the rules say to do today, worked out from last time (null when there is no plan for it).
   coach: NextTarget | null
+  // Something the app noticed in the last few workouts (a stall, too easy), or null.
+  insight: Insight | null
   status: 'active' | 'done' | 'skipped'
   effort: number | null
   note: string
@@ -182,6 +185,7 @@ function buildExercises(
   day: DayLite | null,
   logged: LoggedSet[],
   lastTime: Record<string, LastTime>,
+  history: Record<string, LastTime[]>,
   feedback: FeedbackEntry[],
   maxes: Record<string, number>,
   step: number
@@ -199,6 +203,9 @@ function buildExercises(
     // Progressive overload: today's weight and reps from last time, by the head coach's rules.
     const presc = swap ? null : toPrescription(plan.target_sets, plan.target_reps, plan.target_rpe ?? null, plan.notes)
     const coach = presc ? nextTarget(presc, last?.sets) : null
+    const noticed = exerciseInsight(name, history[name] ?? [])
+    // The Coach line already says when sets were too easy, so do not say it twice.
+    const insight = noticed && !(noticed.kind === 'too-easy' && coach?.tip) ? noticed : null
     const mine = logged.filter((s) => s.exercise_name === name)
     const byIndex = new Map(mine.map((s) => [s.set_index, s] as const))
     const count = Math.max(goals.length, 1, ...mine.map((s) => s.set_index))
@@ -250,6 +257,7 @@ function buildExercises(
       rests: parseRests(plan.notes, count),
       presc,
       coach,
+      insight,
       status: fb?.status === 'skipped' ? 'skipped' : fb ? 'done' : 'active',
       effort: fb?.effort ?? null,
       note: fb?.note ?? '',
@@ -288,10 +296,10 @@ export function WorkoutLogger({
   const router = useRouter()
 
   const [exs, setExs] = useState<ExState[]>(() =>
-    buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5)
+    buildExercises(day, initialSets, lastTime, history, initialFeedback, initialMaxes, 5)
   )
   const [idx, setIdx] = useState<number>(() => {
-    const first = buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5).findIndex(
+    const first = buildExercises(day, initialSets, lastTime, history, initialFeedback, initialMaxes, 5).findIndex(
       (e) => e.status === 'active'
     )
     return first
@@ -300,7 +308,7 @@ export function WorkoutLogger({
   const workoutRef = initialWorkoutId ?? `local:${day?.id ?? 'free'}`
   const [editing, setEditing] = useState<number | null>(null)
   const [sheet, setSheet] = useState<null | 'menu' | 'history' | 'replace' | 'effort' | 'program' | 'maxes'>(() => {
-    const first = buildExercises(day, initialSets, lastTime, initialFeedback, initialMaxes, 5).find(
+    const first = buildExercises(day, initialSets, lastTime, history, initialFeedback, initialMaxes, 5).find(
       (e) => e.status === 'active'
     )
     return first && first.sets.length > 0 && first.sets.every((s) => s.done) ? 'effort' : null
@@ -788,6 +796,7 @@ export function WorkoutLogger({
       // Last time's numbers belonged to the old exercise, so the coach's target no longer applies.
       presc: null,
       coach: null,
+      insight: null,
       sets: e.sets.map((s) => ({ ...s, done: false, touchedWeight: false, auto: false, weight: '', rpe: null })),
     }))
     setReplaceText('')
@@ -1170,6 +1179,19 @@ export function WorkoutLogger({
                 </p>
                 <p className="text-[15px] text-ink">{current.coach.detail}</p>
                 {current.coach.tip && <p className="text-sm text-muted">{current.coach.tip}</p>}
+              </div>
+            )}
+            {current.insight && (
+              <div className="mt-1 rounded-xl border border-line border-l-[3px] border-l-insight bg-surface px-3 py-2" data-x="LOG-INSIGHT">
+                <p className="flex items-center gap-1.5 text-[15px] font-bold text-insight">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 8v5M12 16h.01" />
+                  </svg>
+                  {current.insight.kind === 'deload' ? 'Coach: time for a deload' : 'Coach noticed'}
+                </p>
+                <p className="text-[15px] text-ink">{current.insight.text}</p>
+                {current.insight.kind === 'deload' && <p className="text-sm text-muted">{DELOAD_HOW}</p>}
               </div>
             )}
             {current.swappedFrom && <p className="text-sm text-accent-text">Swapped in for {current.swappedFrom}</p>}

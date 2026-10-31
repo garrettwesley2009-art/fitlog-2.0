@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { allInsights, avoidedExercises } from '@/lib/insights'
 
 // Everything the Home page shows about past training, worked out from logged sets only.
 // No extra tables: every number here comes from `workouts` and `sets`.
@@ -83,7 +84,13 @@ function muscleGroup(name: string): string | null {
   return null
 }
 
-type SetRow = { weight: number | null; reps: number | null; created_at: string | null; exercises: { name: string } | null }
+type SetRow = {
+  weight: number | null
+  reps: number | null
+  rpe: number | null
+  created_at: string | null
+  exercises: { name: string } | null
+}
 type WorkoutRow = {
   id: string
   date: string
@@ -97,13 +104,23 @@ export async function getHomeStats(
   supabase: SupabaseClient,
   userId: string
 ): Promise<HomeStats> {
-  const { data } = await supabase
-    .from('workouts')
-    .select('id, date, created_at, user_program_days(day_label), sets(weight, reps, created_at, exercises(name))')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(120)
+  const since = new Date(Date.now() - 42 * DAY_MS).toISOString()
+  const [{ data }, { data: feedbackRows }] = await Promise.all([
+    supabase
+      .from('workouts')
+      .select('id, date, created_at, user_program_days(day_label), sets(weight, reps, rpe, created_at, exercises(name))')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(120),
+    // Skipped or swapped exercises in the last 6 weeks. Empty if the table does not exist yet.
+    supabase
+      .from('exercise_feedback')
+      .select('exercise_name, status')
+      .eq('user_id', userId)
+      .in('status', ['skipped', 'swapped'])
+      .gte('created_at', since),
+  ])
 
   // A workout only counts once at least one set was logged in it. Newest first.
   const workouts = ((data ?? []) as unknown as WorkoutRow[]).filter((w) => (w.sets?.length ?? 0) > 0)
@@ -254,11 +271,35 @@ export async function getHomeStats(
     const lastThree = known.slice(-3)
     return lastThree[0] < lastThree[1] && lastThree[1] < lastThree[2]
   })
-  const stalled = keyLifts.find((l) => l.trend.filter((t) => t !== null).length >= 4 && l.change === 0)
-  if (climbing) {
+  // What the head coach's rules notice in the log (stalls, sets far below the target RPE).
+  const noticed = allInsights(
+    workouts.map((w) => ({
+      date: w.date,
+      sets: w.sets.map((s) => ({
+        weight: s.weight == null ? null : Number(s.weight),
+        reps: s.reps,
+        rpe: s.rpe == null ? null : Number(s.rpe),
+        exercise: s.exercises?.name ?? '',
+      })),
+    }))
+  )
+  const deloads = noticed.filter((i) => i.kind === 'deload')
+  const nudge = noticed.find((i) => i.kind === 'stalled-easy' || i.kind === 'too-easy' || i.kind === 'stalled-no-rpe')
+  const avoided = avoidedExercises((feedbackRows ?? []) as { exercise_name: string; status: string }[])[0]
+
+  if (deloads.length >= 2) {
+    coachNote = `${deloads
+      .slice(0, 3)
+      .map((d) => d.exercise)
+      .join(', ')} have not gone up in 3 sessions even though you are training hard. Time for a deload week: about half the sets, 10% lighter, then back to your plan.`
+  } else if (deloads.length === 1) {
+    coachNote = `${deloads[0].text} About half the sets, 10% lighter, then back to your plan.`
+  } else if (nudge) {
+    coachNote = nudge.text
+  } else if (avoided) {
+    coachNote = `You have skipped or swapped out ${avoided.exercise} ${avoided.skipped + avoided.swapped} times lately. Ask the Coach for a replacement you will actually enjoy.`
+  } else if (climbing) {
     coachNote = `Your ${climbing.name.toLowerCase()} has gone up three weeks in a row. Keep the same plan and add a little weight when the reps feel fast.`
-  } else if (stalled) {
-    coachNote = `Your ${stalled.name.toLowerCase()} has held at ${stalled.best} lb for a while. Ask the coach about a small change, like a rep range or a variation.`
   } else if (streakWeeks >= 3) {
     coachNote = `${streakWeeks} weeks in a row. Consistency is what builds strength, so keep showing up.`
   } else if (workouts.length > 0 && !trainedThisWeek) {
