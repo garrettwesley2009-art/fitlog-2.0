@@ -378,14 +378,15 @@ button, a { touch-action: manipulation; }
   }
   .flare-check.flare-record::after { box-shadow: 0 0 18px 3px color-mix(in srgb, var(--color-record) 90%, transparent); }
 
-  /* Red flare while the main button is held down */
-  .press-flare { position: relative; }
-  .press-flare::after {
+  /* Red flare while the main button is held down. Built into the shared red buttons too. */
+  .press-flare, .btn-accent, .btn-accent-sm { position: relative; }
+  .press-flare::after, .btn-accent::after, .btn-accent-sm::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
     box-shadow: 0 0 22px color-mix(in srgb, var(--color-accent) 85%, transparent);
     transition: opacity 0.25s;
   }
-  .press-flare:active:not(:disabled)::after { opacity: 1; transition: none; }
+  .press-flare:active:not(:disabled)::after, .btn-accent:active:not(:disabled)::after,
+  .btn-accent-sm:active:not(:disabled)::after { opacity: 1; transition: none; }
 
   /* Rest ring in its last 10 seconds: soft red glow and a slow pulse */
   .ring-hurry { animation: hurry 0.8s ease-in-out infinite; }
@@ -397,6 +398,8 @@ button, a { touch-action: manipulation; }
   .rise-in > :nth-child(3) { animation-delay: 0.12s; }
   .rise-in > :nth-child(n + 4) { animation-delay: 0.18s; }
   .rise-once { animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  /* Whole page slides in when you switch tabs (see src/app/(main)/template.tsx) */
+  .page-in { animation: rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 }
 
 /* Page titles everywhere: bold, condensed, uppercase. In the base layer so a page's own classes still win. */
