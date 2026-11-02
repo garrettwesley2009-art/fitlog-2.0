@@ -53,8 +53,12 @@ A `'use server'` file may only export async functions.
 - Installable app: `src/app/manifest.ts`, icons drawn in `src/lib/app-icon.tsx` and served by the
   `src/app/*.png/route.tsx` folders. Keep `.png` in those paths and `manifest.webmanifest` in the
   `src/proxy.ts` skip list, or signed-out phones get redirected to `/login` instead of the file.
-  The "Get the app" bar and install walkthrough on Home is `src/components/get-app.tsx`; it
-  hides itself when FitLog runs from the home screen.
+  The "Download the app" bar and install walkthrough on Home is `src/components/get-app.tsx`; it
+  hides itself when FitLog runs from the home screen. iPhone launch screens: `src/app/splash/`,
+  sizes in `src/lib/splash-sizes.ts`.
+- Offline launch: `public/sw.js` (registered by `src/components/sw-register.tsx`, production only)
+  serves the last copy of a page or `src/app/offline` when there is no signal. It must never cache
+  `/api`, POSTs or other sites. Bump its `VERSION` if it ever serves something stale.
 
 ## Design rules
 

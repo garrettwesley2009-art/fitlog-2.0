@@ -25,6 +25,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Feel like an app: no rubber-band pull of the whole page, no grey flash on tap */
+html, body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ------------------------------------------------------------------
    FitLog design tokens. Change a value here and every page updates.
    To switch to the gym's brand color, edit --color-accent and

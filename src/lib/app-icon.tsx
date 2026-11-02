@@ -1,8 +1,8 @@
 import { ImageResponse } from 'next/og'
 
-// The home-screen icon: a barbell (white bar, red plates) on the app's dark
-// background. Drawn on a 512 grid and scaled. `inset` shrinks the barbell
-// toward the centre for Android's maskable icon, which may be cropped round.
+// The barbell (white bar, red plates) on the app's dark background, drawn on
+// a 512 grid and scaled. Used for the home-screen icons and iPhone launch
+// screens.
 const CANVAS = '#0b0b0c'
 const BAR = '#f5f5f5'
 const PLATE = '#c0392b'
@@ -17,19 +17,21 @@ const parts: [x: number, y: number, w: number, h: number, r: number, color: stri
   [308, 196, 28, 120, 8, PLATE],
 ]
 
-export function appIcon(size: number, inset = 1) {
-  const s = (size / 512) * inset
-  const offset = (size - 512 * s) / 2
+// `markSize` is how wide the 512 grid is drawn, centred in a width x height canvas.
+function barbellImage(width: number, height: number, markSize: number) {
+  const s = markSize / 512
+  const left = (width - markSize) / 2
+  const top = (height - markSize) / 2
   return new ImageResponse(
     (
-      <div style={{ width: size, height: size, display: 'flex', position: 'relative', background: CANVAS }}>
+      <div style={{ width, height, display: 'flex', position: 'relative', background: CANVAS }}>
         {parts.map(([x, y, w, h, r, color], i) => (
           <div
             key={i}
             style={{
               position: 'absolute',
-              left: offset + x * s,
-              top: offset + y * s,
+              left: left + x * s,
+              top: top + y * s,
               width: w * s,
               height: h * s,
               borderRadius: r * s,
@@ -39,6 +41,16 @@ export function appIcon(size: number, inset = 1) {
         ))}
       </div>
     ),
-    { width: size, height: size }
+    { width, height }
   )
+}
+
+// `inset` shrinks the barbell toward the centre for Android's maskable icon,
+// which may be cropped round.
+export function appIcon(size: number, inset = 1) {
+  return barbellImage(size, size, size * inset)
+}
+
+export function splashImage(width: number, height: number) {
+  return barbellImage(width, height, width * 0.5)
 }

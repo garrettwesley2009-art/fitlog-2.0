@@ -145,7 +145,7 @@ function stepsFor(kind: Kind): Step[] {
     {
       art: <HomeScreenArt />,
       title: 'Open FitLog on your phone',
-      body: `Go to ${window.location.host} in Safari (iPhone) or Chrome (Android), then tap Get the app on Home.`,
+      body: `Go to ${window.location.host} in Safari (iPhone) or Chrome (Android), then tap Download the app on Home.`,
     },
   ]
 }
@@ -186,7 +186,7 @@ function InstallSheet({ kind, onClose }: { kind: Kind; onClose: () => void }) {
         className="w-full max-w-lg rounded-t-3xl border border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
-          <p className="label-caps tabular">{steps.length > 1 ? `Step ${i + 1} of ${steps.length}` : 'Get the app'}</p>
+          <p className="label-caps tabular">{steps.length > 1 ? `Step ${i + 1} of ${steps.length}` : 'Download the app'}</p>
           <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-full text-muted active:bg-glass-hover">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
@@ -251,8 +251,8 @@ export function GetApp() {
       >
         <Image src="/apple-touch-icon.png" alt="" width={36} height={36} unoptimized className="flex-none rounded-[10px] border border-line" />
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-ink">Get the app</span>
-          <span className="block text-sm text-muted">Add FitLog to your home screen</span>
+          <span className="block font-semibold text-ink">Download the app</span>
+          <span className="block text-sm text-muted">Install FitLog on your phone</span>
         </span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none text-muted">
           <path d="M9 5l7 7-7 7" />
