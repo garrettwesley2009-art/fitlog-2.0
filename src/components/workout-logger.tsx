@@ -946,7 +946,7 @@ export function WorkoutLogger({
             type="button"
             onClick={handleFinish}
             disabled={finishing || setsDone === 0}
-            className="flex h-16 w-full items-center justify-center rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
+            className="press-flare flex h-16 w-full items-center justify-center rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
           >
             {finishing ? 'Finishing...' : 'Finish workout'}
           </button>
@@ -972,6 +972,8 @@ export function WorkoutLogger({
   const parts = complexParts(current.name, current.plan.notes)
   const allDone = ci === -1
   const doneCount = current.sets.filter((s) => s.done).length
+  // Only the newest logged set flares, so opening an exercise doesn't light up every row.
+  const lastDone = current.sets.map((s) => s.done).lastIndexOf(true)
   const isLast = ci === current.sets.length - 1 && editing === null
   const exHistory = history[current.name] ?? []
   const last = lastTime[current.name]
@@ -995,7 +997,7 @@ export function WorkoutLogger({
   const lastLine = last ? last.sets.map(describe).join(' · ') : null
   const ringOffset = restTotal > 0 ? RING * (1 - Math.min(1, restLeft / restTotal)) : 0
   const bigButton =
-    'flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50'
+    'press-flare flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-accent text-xl font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50'
 
   return (
     // Lives inside the Workout > Log page: the app's top tabs and bottom bar stay visible.
@@ -1062,7 +1064,7 @@ export function WorkoutLogger({
       </div>
 
       <div id="log-scroll">
-        <div className="space-y-3 pb-4 pt-3">
+        <div className="rise-in space-y-3 pb-4 pt-3">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">
@@ -1271,7 +1273,7 @@ export function WorkoutLogger({
           )}
 
           {prNote && (
-            <div role="status" className="flex items-center gap-3 rounded-2xl bg-record px-4 py-3 text-on-record">
+            <div role="status" className="rise-once flex items-center gap-3 rounded-2xl bg-record px-4 py-3 text-on-record">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
               </svg>
@@ -1286,7 +1288,7 @@ export function WorkoutLogger({
 
           {resting ? (
             <div className="card flex items-center gap-4 p-3" data-x="LOG-POLISH">
-              <div className="relative h-24 w-24 flex-none">
+              <div className={`relative h-24 w-24 flex-none ${restLeft <= 10 && restLeft > 0 ? 'ring-hurry' : ''}`}>
                 <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
                   <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-line)" strokeWidth="9" />
                   <circle
@@ -1324,7 +1326,7 @@ export function WorkoutLogger({
                   <button
                     type="button"
                     onClick={startNextSet}
-                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent font-bold text-white active:scale-[0.97]"
+                    className="press-flare flex h-11 flex-1 items-center justify-center rounded-xl bg-accent font-bold text-white active:scale-[0.97]"
                   >
                     Start set {ci + 1}
                   </button>
@@ -1434,7 +1436,7 @@ export function WorkoutLogger({
                         type="button"
                         disabled={busy}
                         onClick={() => void logSet()}
-                        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-lg font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
+                        className="press-flare mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-lg font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -1474,7 +1476,7 @@ export function WorkoutLogger({
                         <span
                           className={`flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full ${
                             st.pr ? 'bg-record text-on-record' : 'bg-success text-on-success'
-                          }`}
+                          } ${i === lastDone ? `flare-check ${st.pr ? 'flare-record' : ''}` : ''}`}
                           aria-hidden="true"
                         >
                           {st.pr ? (

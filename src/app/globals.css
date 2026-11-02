@@ -355,6 +355,50 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 /* Tap feedback on every button and link, without moving anything around it */
 button, a { touch-action: manipulation; }
 
+/* === FitLog redesign B3 (glow only when it counts) === */
+/* Deeper black, firmer borders, no glow at rest. Glow only flares for a moment:
+   a set saved (green), a record (gold), the main button pressed (red), the last 10s of rest. */
+@theme static {
+  --color-canvas: #070708;
+  --color-line: #2f2f34;
+}
+.bg-glow { background-image: none; }
+
+@keyframes flare { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes hurry { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+@layer components {
+  /* Check mark that flares once when it appears. Add flare-record for a PR. */
+  .flare-check { position: relative; }
+  .flare-check::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 9999px; pointer-events: none; opacity: 0;
+    box-shadow: 0 0 16px 2px color-mix(in srgb, var(--color-success) 90%, transparent);
+    animation: flare 0.9s ease-out;
+  }
+  .flare-check.flare-record::after { box-shadow: 0 0 18px 3px color-mix(in srgb, var(--color-record) 90%, transparent); }
+
+  /* Red flare while the main button is held down */
+  .press-flare { position: relative; }
+  .press-flare::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+    box-shadow: 0 0 22px color-mix(in srgb, var(--color-accent) 85%, transparent);
+    transition: opacity 0.25s;
+  }
+  .press-flare:active:not(:disabled)::after { opacity: 1; transition: none; }
+
+  /* Rest ring in its last 10 seconds: soft red glow and a slow pulse */
+  .ring-hurry { animation: hurry 0.8s ease-in-out infinite; }
+  .ring-hurry svg { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent-text) 55%, transparent)); }
+
+  /* Children slide up one after another when the screen opens */
+  .rise-in > * { animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .rise-in > :nth-child(2) { animation-delay: 0.06s; }
+  .rise-in > :nth-child(3) { animation-delay: 0.12s; }
+  .rise-in > :nth-child(n + 4) { animation-delay: 0.18s; }
+  .rise-once { animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+}
+
 /* Page titles everywhere: bold, condensed, uppercase. In the base layer so a page's own classes still win. */
 @layer base {
   h1 {
