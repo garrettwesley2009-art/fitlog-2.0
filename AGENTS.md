@@ -53,6 +53,8 @@ A `'use server'` file may only export async functions.
 - Installable app: `src/app/manifest.ts`, icons drawn in `src/lib/app-icon.tsx` and served by the
   `src/app/*.png/route.tsx` folders. Keep `.png` in those paths and `manifest.webmanifest` in the
   `src/proxy.ts` skip list, or signed-out phones get redirected to `/login` instead of the file.
+  The "Get the app" bar and install walkthrough on Home is `src/components/get-app.tsx`; it
+  hides itself when FitLog runs from the home screen.
 
 ## Design rules
 
