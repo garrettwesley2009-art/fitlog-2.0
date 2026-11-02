@@ -6,6 +6,7 @@ import { getCurrentProgram, getProgramPosition } from '@/lib/data'
 import { getHomeStats } from '@/lib/home'
 import { skipCurrentDay } from '@/app/actions/workouts'
 import { HomeGreeting } from '@/components/home-greeting'
+import { GetApp } from '@/components/get-app'
 import {
   KeyLiftsCard,
   LastSessionCard,
@@ -90,7 +91,7 @@ export default async function HomePage() {
   return (
     <div className="space-y-3">
       <HomeGreeting name={name} />
-
+      <GetApp />
       {/* Today: the one thing that matters, as a big red block */}
       {program && position && !position.finished ? (
         <section className="relative overflow-hidden rounded-[22px] bg-accent p-5 text-white">
