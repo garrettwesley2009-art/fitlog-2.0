@@ -2,8 +2,10 @@
 // Pages: network first, then the last copy, then /offline.
 // Built files (/_next/static, icons): saved after first use; their names change every deploy.
 // Never touches /api, POSTs (server actions) or other sites, so saving sets works as before.
+// The app also asks it to save Home and Log in the background each time it opens
+// (sw-register.tsx), because moving between tabs never fully loads a page.
 // Bump VERSION to throw away everything saved by older versions.
-const VERSION = 'v1'
+const VERSION = 'v2'
 const PAGES = `fitlog-pages-${VERSION}`
 const STATIC = `fitlog-static-${VERSION}`
 
@@ -34,6 +36,12 @@ self.addEventListener('fetch', (event) => {
   }
 })
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'save-pages' && Array.isArray(event.data.paths)) {
+    event.waitUntil(Promise.all(event.data.paths.map(savePage)))
+  }
+})
+
 async function page(req) {
   try {
     const res = await fetch(req)
@@ -43,7 +51,7 @@ async function page(req) {
     }
     return res
   } catch {
-    return (await caches.match(req)) || (await caches.match('/offline'))
+    return (await caches.match(req, { ignoreVary: true })) || (await caches.match('/offline'))
   }
 }
 
@@ -56,4 +64,26 @@ async function asset(req) {
     await cache.put(req, res.clone())
   }
   return res
+}
+
+// Saves one page plus the built files it needs, so its buttons work offline too.
+// Signed-out phones get redirected to /login, which is not saved.
+async function savePage(path) {
+  try {
+    const res = await fetch(path)
+    if (!res.ok || res.redirected) return
+    const html = await res.clone().text()
+    await (await caches.open(PAGES)).put(path, res)
+    const files = [...new Set(html.match(/\/_next\/static\/[^"'\s\\)]+/g) || [])]
+    const statics = await caches.open(STATIC)
+    await Promise.all(
+      files.map(async (f) => {
+        if (await statics.match(f)) return
+        const r = await fetch(f)
+        if (r.ok) await statics.put(f, r)
+      })
+    )
+  } catch {
+    // No signal or a failed file: try again next time the app opens.
+  }
 }
