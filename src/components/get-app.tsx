@@ -177,7 +177,7 @@ function InstallSheet({ kind, onClose }: { kind: Kind; onClose: () => void }) {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60" onClick={onClose}>
+    <div className="glass-scrim fixed inset-0 z-[80] flex items-end justify-center" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"

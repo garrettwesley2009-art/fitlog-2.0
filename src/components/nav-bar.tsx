@@ -65,7 +65,7 @@ export function NavBar({ displayName }: { displayName: string }) {
     <>
       {/* Top: shared header (not on the You pages) plus this section's tabs */}
       {(showHeader || showSubs) && (
-        <div className="sticky top-0 z-30 border-b border-line bg-canvas">
+        <div className="glass-bar sticky top-0 z-30 border-b border-glass-edge">
           {showHeader && (
             <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
               {/* Logo goes here later: swap the text for an <Image> */}
@@ -86,27 +86,25 @@ export function NavBar({ displayName }: { displayName: string }) {
           )}
 
           {showSubs && section && (
-            <nav
-              aria-label={`${section.label} sections`}
-              className="mx-auto flex max-w-5xl gap-6 overflow-x-auto px-4"
-            >
-              {section.subs.map((sub) => {
-                const active = activeSub?.href === sub.href
-                return (
-                  <Link
-                    key={sub.href}
-                    href={sub.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={
-                      active
-                        ? 'flex min-h-11 shrink-0 items-center border-b-[3px] border-accent text-[15px] font-semibold text-ink'
-                        : 'flex min-h-11 shrink-0 items-center border-b-[3px] border-transparent text-[15px] font-medium text-muted hover:text-ink'
-                    }
-                  >
-                    {sub.label}
-                  </Link>
-                )
-              })}
+            // One row that always fits, so no tab hides off the edge. Active = solid fill + bold.
+            <nav aria-label={`${section.label} sections`} className="mx-auto max-w-5xl px-4 py-2">
+              <div className="flex gap-0.5 rounded-xl bg-glass p-[3px]">
+                {section.subs.map((sub) => {
+                  const active = activeSub?.href === sub.href
+                  return (
+                    <Link
+                      key={sub.href}
+                      href={sub.href}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex min-h-11 flex-1 basis-0 items-center justify-center rounded-[10px] px-1 text-center text-sm leading-tight transition-colors ${
+                        active ? 'bg-inset font-bold text-ink shadow-sm' : 'font-medium text-muted hover:text-ink'
+                      }`}
+                    >
+                      {sub.label}
+                    </Link>
+                  )
+                })}
+              </div>
             </nav>
           )}
         </div>
@@ -115,7 +113,7 @@ export function NavBar({ displayName }: { displayName: string }) {
       {/* Bottom: the main sections */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bar"
+        className="glass-bar fixed inset-x-0 bottom-0 z-40 border-t border-glass-edge"
       >
         <ul className="mx-auto flex max-w-5xl items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
           {NAV_SECTIONS.map((s) => {

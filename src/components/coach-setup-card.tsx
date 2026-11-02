@@ -55,7 +55,7 @@ function StylePicker({
   const exact = STYLES.some(([n]) => n.toLowerCase() === ql)
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60" onClick={onClose}>
+    <div className="glass-scrim fixed inset-0 z-[70] flex items-end justify-center" onClick={onClose}>
       <div
         role="dialog"
         aria-label="Pick a style"

@@ -31,10 +31,11 @@ A `'use server'` file may only export async functions.
 ## How the code is laid out
 
 - Navigation is URL-driven by `src/lib/nav.ts` (sections with `prefixes`, `subs`, `hideHeader`).
-  `src/components/nav-bar.tsx` draws the top tabs and the bottom bar: Workout, Schedule, Home,
-  Coach, You. To add or move a page, change `nav.ts` first.
-- The app shell (`src/app/(main)/layout.tsx`) has fixed top and bottom bars and one scrolling
-  area. Pages render inside it. Do not make a page cover the bars with `fixed inset-0`
+  `src/components/nav-bar.tsx` draws the top tabs and the bottom bar: Workout, Home, Coach, You.
+  To add or move a page, change `nav.ts` first.
+- The app shell (`src/app/(main)/layout.tsx`) has one scrolling area holding the sticky glass top
+  bar and the page; the bottom bar is fixed on top of it. Pages scroll under both bars. The page
+  slide-in on tab change lives in `src/app/(main)/template.tsx`; keep it a plain wrapper. Do not make a page cover the bars with `fixed inset-0`
   (sheets and pop-ups are the only exception).
 - The Log page is `src/app/(main)/log/page.tsx` plus `src/components/workout-logger.tsx`.
   Sets save one at a time through `/api/sets` with an offline outbox (`src/lib/outbox.ts`).
@@ -72,7 +73,9 @@ Full spec: the project doc `ui-ux-design.md`. The short version:
   Blue = trends and the Coach. Orange = streak. Never show meaning by color alone: add a check,
   trophy, icon or words.
 - **Small red text** uses `text-accent-text`, never plain `text-accent` on dark (fails contrast).
-- **Solid cards** (`card` / `glass-card` classes are solid now). No blur or see-through glass.
+- **Solid cards** (`card` / `glass-card` classes are solid). Frosted glass only on the top and
+  bottom bars (`glass-bar`), pop-up panels (`glass-sheet`) and the dimmed area behind pop-ups
+  (`glass-scrim`). Never on cards with numbers.
 - **Type.** Big numbers and page titles use `font-display` (Barlow Condensed); body is Barlow,
   never under 16px for body text on a phone. Use `tabular` for weights, reps, timers and counts.
 - **Tap targets are at least 44x44px** with 8px or more between them. The main action on a

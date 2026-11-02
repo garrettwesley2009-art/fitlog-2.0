@@ -31,7 +31,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Log', href: '/log' },
       { label: 'My Program', href: '/workout/program' },
       { label: 'History', href: '/history' },
-      { label: 'Programs', href: '/templates', also: ['/programs'] },
+      { label: 'Find a program', href: '/templates', also: ['/programs'] },
     ],
   },
   {

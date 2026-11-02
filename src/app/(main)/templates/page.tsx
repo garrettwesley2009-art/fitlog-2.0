@@ -23,7 +23,7 @@ export default async function TemplatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[34px] font-extrabold text-ink">Programs</h1>
+        <h1 className="font-display text-[34px] font-extrabold text-ink">Find a program</h1>
         <p className="mt-1 text-sm text-muted">
           Pick one to start from, edit your own copy, or customize it with the coach.
         </p>

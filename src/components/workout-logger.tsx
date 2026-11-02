@@ -1373,7 +1373,7 @@ export function WorkoutLogger({
                                 type="button"
                                 aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
                                 onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
-                                className="flex h-11 w-10 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
+                                className="flex h-12 w-11 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink transition-transform active:scale-95"
                               >
                                 &minus;
                               </button>
@@ -1383,13 +1383,18 @@ export function WorkoutLogger({
                                 inputMode={field === 'reps' ? 'numeric' : 'decimal'}
                                 value={nextSet[field]}
                                 onChange={(e) => setField(ci, field, e.target.value)}
+                                // Select the number on tap so typing replaces it. iOS needs the next frame.
+                                onFocus={(e) => {
+                                  const el = e.currentTarget
+                                  requestAnimationFrame(() => el.select())
+                                }}
                                 className={`w-full min-w-0 rounded-xl bg-transparent text-center font-display text-[36px] font-extrabold leading-none tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
                               />
                               <button
                                 type="button"
                                 aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
                                 onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
-                                className="flex h-11 w-10 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
+                                className="flex h-12 w-11 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink transition-transform active:scale-95"
                               >
                                 +
                               </button>
@@ -1573,12 +1578,12 @@ export function WorkoutLogger({
           <button
             type="button"
             aria-label="Close"
-            className="absolute inset-0 bg-canvas/70"
+            className="glass-scrim absolute inset-0"
             onClick={() => {
               if (sheet !== 'effort') setSheet(null)
             }}
           />
-          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-xl rounded-t-[1.75rem] border border-b-0 border-line bg-surface px-5 pb-8 pt-3">
+          <div className="glass-sheet absolute inset-x-0 bottom-0 mx-auto max-w-xl rounded-t-[1.75rem] border border-b-0 px-5 pb-8 pt-3">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
 
             {sheet === 'program' && program && (() => {

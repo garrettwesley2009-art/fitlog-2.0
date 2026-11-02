@@ -34,7 +34,7 @@ export function HelpTip({ title, children, className = '' }: { title: string; ch
       {open &&
         createPortal(
         <div
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center"
+          className="glass-scrim fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
           onClick={() => setOpen(false)}
         >
           <div

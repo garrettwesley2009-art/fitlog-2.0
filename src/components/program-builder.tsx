@@ -396,10 +396,10 @@ export function ProgramBuilder({ initial, programId }: { initial?: ProgramDraft;
           <button
             type="button"
             aria-label="Close"
-            className="absolute inset-0 bg-canvas/70"
+            className="glass-scrim absolute inset-0"
             onClick={() => setTarget(null)}
           />
-          <div className="absolute inset-x-0 bottom-0 mx-auto flex h-[80vh] max-w-xl flex-col rounded-t-[1.75rem] border border-b-0 border-line bg-surface px-5 pb-6 pt-3">
+          <div className="glass-sheet absolute inset-x-0 bottom-0 mx-auto flex h-[80vh] max-w-xl flex-col rounded-t-[1.75rem] border border-b-0 px-5 pb-6 pt-3">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
             <h2 className="mb-2 text-lg font-semibold text-ink">
               {target.replace !== null ? 'Change exercise' : 'Add an exercise'}
