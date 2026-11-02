@@ -21,6 +21,13 @@ Next.js 16 differs from what most AI models learned. Before using a Next.js API 
 sure about, check the official Next.js 16 docs (or the version in `package.json`) instead of guessing.
 A `'use server'` file may only export async functions.
 
+## Commands
+
+- `npm run dev` - local server at http://localhost:3000 (needs `.env.local`: Supabase URL,
+  Supabase anon key, `ANTHROPIC_API_KEY`).
+- `npx tsc --noEmit` - type check. `npm run lint` - ESLint. `npm run build` - production build.
+- There is no test runner yet; check changes by type check, lint and looking at the page.
+
 ## How the code is laid out
 
 - Navigation is URL-driven by `src/lib/nav.ts` (sections with `prefixes`, `subs`, `hideHeader`).
@@ -43,6 +50,9 @@ A `'use server'` file may only export async functions.
 - Sign-in check: use `getUserCached()` from `src/lib/supabase/get-user.ts`. Do not call
   `supabase.auth.getUser()` directly in pages; it adds a network call per page.
 - Every page under `(main)` shows a skeleton from `loading.tsx` while data loads. Keep it.
+- Installable app: `src/app/manifest.ts`, icons drawn in `src/lib/app-icon.tsx` and served by the
+  `src/app/*.png/route.tsx` folders. Keep `.png` in those paths and `manifest.webmanifest` in the
+  `src/proxy.ts` skip list, or signed-out phones get redirected to `/login` instead of the file.
 
 ## Design rules
 
