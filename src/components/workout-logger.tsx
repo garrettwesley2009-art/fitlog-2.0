@@ -1064,7 +1064,7 @@ export function WorkoutLogger({
       </div>
 
       <div id="log-scroll">
-        <div className="rise-in space-y-3 pb-4 pt-3">
+        <div className="space-y-3 pb-4 pt-3">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">
@@ -1326,7 +1326,7 @@ export function WorkoutLogger({
                   <button
                     type="button"
                     onClick={startNextSet}
-                    className="press-flare flex h-11 flex-1 items-center justify-center rounded-xl bg-accent font-bold text-white active:scale-[0.97]"
+                    className="press-flare flex h-11 flex-1 items-center justify-center rounded-xl bg-accent font-bold text-white transition-transform active:scale-[0.97]"
                   >
                     Start set {ci + 1}
                   </button>
