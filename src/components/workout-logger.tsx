@@ -445,7 +445,6 @@ export function WorkoutLogger({
     tick()
     const id = setInterval(tick, 250)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restEndsAt])
 
   useEffect(
@@ -1063,13 +1062,13 @@ export function WorkoutLogger({
       </div>
 
       <div id="log-scroll">
-        <div className="space-y-4 pb-6 pt-4">
+        <div className="space-y-3 pb-4 pt-3">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-accent-text">
                 Exercise {idx + 1} of {exs.length}
               </p>
-              <h1 className="font-display text-[44px] font-extrabold uppercase leading-none break-words text-ink">
+              <h1 className="font-display text-[34px] font-extrabold uppercase leading-none break-words text-ink">
                 {current.name}
               </h1>
             </div>
@@ -1338,7 +1337,7 @@ export function WorkoutLogger({
           ) : null}
 
           <div className="card p-2" data-x="LOG-SET-LIST">
-            <ul className="space-y-1.5">
+            <ul className="space-y-1">
               {current.sets.map((st, i) => {
                 const isCur = i === ci && !allDone
                 if (isCur && nextSet && !resting) {
@@ -1361,40 +1360,42 @@ export function WorkoutLogger({
                           )}
                         </span>
                       </div>
-                      {(['weight', 'reps'] as const).map((field) => (
-                        <div key={field} className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
-                            onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
-                            className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
-                          >
-                            &minus;
-                          </button>
-                          <div className="text-center">
-                            <label htmlFor={`${field}-${ci}`} className="label-caps block">
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {(['weight', 'reps'] as const).map((field) => (
+                          <div key={field}>
+                            <label htmlFor={`${field}-${ci}`} className="label-caps block text-center">
                               {field === 'reps' ? 'Reps' : 'Weight · lb'}
                             </label>
-                            <input
-                              id={`${field}-${ci}`}
-                              type="number"
-                              inputMode={field === 'reps' ? 'numeric' : 'decimal'}
-                              value={nextSet[field]}
-                              onChange={(e) => setField(ci, field, e.target.value)}
-                              className={`w-full min-w-0 rounded-xl bg-transparent text-center font-display text-[52px] font-extrabold leading-none tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
-                            />
+                            <div className="flex items-center justify-between gap-1">
+                              <button
+                                type="button"
+                                aria-label={field === 'reps' ? 'One fewer rep' : 'Five pounds less'}
+                                onClick={() => bump(ci, field, field === 'reps' ? -1 : -5)}
+                                className="flex h-11 w-10 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
+                              >
+                                &minus;
+                              </button>
+                              <input
+                                id={`${field}-${ci}`}
+                                type="number"
+                                inputMode={field === 'reps' ? 'numeric' : 'decimal'}
+                                value={nextSet[field]}
+                                onChange={(e) => setField(ci, field, e.target.value)}
+                                className={`w-full min-w-0 rounded-xl bg-transparent text-center font-display text-[36px] font-extrabold leading-none tabular text-ink outline-none focus-visible:bg-inset ${NO_SPINNER}`}
+                              />
+                              <button
+                                type="button"
+                                aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
+                                onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
+                                className="flex h-11 w-10 flex-none items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
+                              >
+                                +
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            aria-label={field === 'reps' ? 'One more rep' : 'Five pounds more'}
-                            onClick={() => bump(ci, field, field === 'reps' ? 1 : 5)}
-                            className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-inset text-[22px] leading-none text-ink active:scale-95"
-                          >
-                            +
-                          </button>
-                        </div>
-                      ))}
-                      <fieldset className="mt-3">
+                        ))}
+                      </div>
+                      <fieldset className="mt-2">
                         <legend className="label-caps mb-1.5 flex w-full items-center justify-between">
                           <span>How hard? RPE</span>
                           {current.presc && (
@@ -1414,7 +1415,7 @@ export function WorkoutLogger({
                                 aria-pressed={on}
                                 aria-label={`RPE ${rpe}, ${left} ${left === 1 ? 'rep' : 'reps'} left${inTarget ? ', the target' : ''}`}
                                 onClick={() => setRpe(ci, rpe)}
-                                className={`flex min-h-14 flex-col items-center justify-center rounded-xl border leading-tight transition-transform active:scale-[0.97] ${
+                                className={`flex min-h-12 flex-col items-center justify-center rounded-xl border leading-tight transition-transform active:scale-[0.97] ${
                                   on
                                     ? 'border-accent bg-accent text-white'
                                     : inTarget
@@ -1422,7 +1423,7 @@ export function WorkoutLogger({
                                       : 'border-line-strong bg-inset text-ink'
                                 }`}
                               >
-                                <span className="font-display text-[22px] font-bold tabular">{rpe}</span>
+                                <span className="font-display text-xl font-bold tabular">{rpe}</span>
                                 <span className={`text-[12px] ${on ? 'text-white' : 'text-muted'}`}>{left} left</span>
                               </button>
                             )
@@ -1433,7 +1434,7 @@ export function WorkoutLogger({
                         type="button"
                         disabled={busy}
                         onClick={() => void logSet()}
-                        className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-lg font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
+                        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-lg font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -1447,7 +1448,7 @@ export function WorkoutLogger({
                   return (
                     <li
                       key={i}
-                      className="flex min-h-12 items-center justify-between rounded-xl border-2 border-accent bg-surface px-3 tabular"
+                      className="flex min-h-10 items-center justify-between rounded-xl border-2 border-accent bg-surface px-3 tabular"
                     >
                       <span className="font-semibold">
                         Set {i + 1} <span className="text-sm font-normal text-muted">up next</span>
@@ -1468,7 +1469,7 @@ export function WorkoutLogger({
                           setEditing(i)
                         }}
                         aria-label={`Set ${i + 1}: ${st.weight || 0} pounds for ${st.reps} reps${st.rpe != null ? ` at RPE ${st.rpe}` : ''}${st.pr ? ', personal record' : ''}. Tap to edit.`}
-                        className="flex min-h-12 w-full items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-left"
+                        className="flex min-h-10 w-full items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-left"
                       >
                         <span
                           className={`flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full ${
@@ -1494,7 +1495,7 @@ export function WorkoutLogger({
                 return (
                   <li
                     key={i}
-                    className="flex min-h-11 items-center justify-between rounded-xl border border-dashed border-dash px-3 text-[15px] text-muted tabular"
+                    className="flex min-h-9 items-center justify-between rounded-xl border border-dashed border-dash px-3 text-[15px] text-muted tabular"
                   >
                     <span>Set {i + 1}</span>
                     <span>{st.toFailure ? 'To failure' : `${st.weight || '-'} × ${st.reps || '-'}`}</span>

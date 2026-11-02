@@ -1,6 +1,5 @@
 import { getUserCached } from '@/lib/supabase/get-user'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { NavBar } from '@/components/nav-bar'
 import { Heartbeat } from '@/components/heartbeat'
 import { SyncRunner } from '@/components/sync-runner'
@@ -12,7 +11,6 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
   const { data } = await getUserCached()
 
   if (!data.user) {
